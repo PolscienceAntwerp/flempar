@@ -77,5 +77,4 @@ search_terms <- function(plenary_object,search_terms,type="all",use_parallel=FAL
     dplyr::filter(stringr::str_detect(tolower(sprekertekst), gsub(", ","|",toString(tolower(search_terms))) )) -> result
 
   return(result)
-
 }#end of function

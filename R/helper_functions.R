@@ -116,4 +116,3 @@ call_api_multiple_times <- function(iterator, URL, path, query, resultVector,use
   return(list)
 
 }#endfunction
-

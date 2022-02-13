@@ -96,5 +96,4 @@ search_plenary <- function(date_range_from,date_range_to,use_parallel=FALSE){
   }
 
   return(result)
-
 }
