@@ -27,11 +27,11 @@ workers, enabling to shorten your waiting time.
 
 ``` r
 library(Flempar)
-procedure_object <- search_plenary(date_range_from = "2021-01-01",
+plenary_object <- search_plenary(date_range_from = "2021-01-01",
                                       date_range_to= "2021-03-31",
                                       use_parallel=TRUE)
                                       
-search_terms(procedure_object = procedure_object,
+search_terms(plenary_object = plenary_object,
              search_terms =  c("statistiek","welzijn"),
              type = c("all"),
              use_parallel=TRUE )
