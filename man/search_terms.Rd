@@ -20,7 +20,7 @@ Dataframe with the full text and the author.
 }
 \description{
 Search for specific terms in all spoken word during the plenary sessions in the Flemish parliament.
-Requires a plenary_object created with vlaplr::search_plenary().
+Requires a plenary_object created with flempar::search_plenary().
 }
 \examples{
 \dontrun{

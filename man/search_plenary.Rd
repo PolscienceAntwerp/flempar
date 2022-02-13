@@ -22,7 +22,7 @@ Search for plenary sessions of the Flemish Parliament between certain dates.
 \examples{
 
 \dontrun{
-plenary_object <-  vlaplr::search_plenary(date_range_from = "2021-01-01",
+plenary_object <-  Flempar::search_plenary(date_range_from = "2021-01-01",
                                       date_range_to= "2021-03-31",
                                       use_parallel=TRUE)
 View(plenary_object)
