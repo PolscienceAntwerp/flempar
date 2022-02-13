@@ -1,15 +1,15 @@
 
-# vlaplr
+# Flempar
 
-Vlaplr is an interface to the API of the Flemish parliament.
+Flempar is an interface to the API of the Flemish parliament.
 
 ## Installation
 
-You can install the released version of vlaplr from this repo with:
+You can install the released version of Flempar from this repo with:
 
 ``` r
 require(devtools)
-install_github("datamarinier/vlaplr")
+install_github("PolscienceAntwerp/Flempar")
 ```
 
 ## Usage
@@ -26,7 +26,7 @@ To boost performance it is possible to divide the calls over several
 workers, enabling to shorten your waiting time.
 
 ``` r
-library(vlaplr)
+library(Flempar)
 procedure_object <- search_plenary(date_range_from = "2021-01-01",
                                       date_range_to= "2021-03-31",
                                       use_parallel=TRUE)
