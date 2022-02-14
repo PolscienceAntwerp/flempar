@@ -81,7 +81,8 @@ search_plenary <- function(date_range_from,date_range_to,use_parallel=FALSE){
            ,item_id = id
            ,objecttype_naam
            ,onderwerp
-           ,titel) -> result
+           ,titel) %>%
+    filter(!is.na(item_id)) -> result
 
   result %>%
     dplyr::group_by(type_activiteit) %>%
