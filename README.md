@@ -41,3 +41,4 @@ search_terms(plenary_object = plenary_object,
 search_plenary("2021-01-01", "2021-03-31",  use_parallel=TRUE) %>%
   search_terms(c("statistiek","welzijn"), c("all"), use_parallel=TRUE )
 ```
+Make sure to have the most recent update of the tidyr package. 
