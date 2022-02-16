@@ -24,6 +24,12 @@
 #' }
 search_terms <- function(plenary_object,search_terms,type="all",use_parallel=FALSE ){
 
+  if( packageVersion("tidyr")<"1.2.0") {
+
+    stop(paste0("You are current using Tidyr version ",packageVersion("tidyr"),". The minimal requirement to use this function is version '1.2.0'. Please update tidyr by restarting R and running install.packages('tidyr'). "))
+
+  }
+
   if( all(!c("id_plenaire_sessie","journaallijn_id","type_activiteit","item_id") %in% names(plenary_object)) ){
 
     stop("Not a valid procedure object!")
