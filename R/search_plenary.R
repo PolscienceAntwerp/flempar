@@ -21,6 +21,13 @@
 #' }
 search_plenary <- function(date_range_from,date_range_to,use_parallel=FALSE){
 
+
+  if( packageVersion("tidyr")<"1.2.0") {
+
+    stop(paste0("You are current using Tidyr version ",packageVersion("tidyr"),". The minimal requirement to use this function is version '1.2.0'. Please update tidyr by restarting R and running install.packages('tidyr'). "))
+
+  }
+
   if(any(is.na(c(lubridate::ymd(date_range_from),lubridate::ymd(date_range_to))))){
 
     stop("Wrong Date Format, please use yyyy-mm-dd.")
