@@ -24,7 +24,7 @@ search_plenary <- function(date_range_from,date_range_to,use_parallel=FALSE){
 
   if( packageVersion("tidyr")<"1.2.0") {
 
-    stop(paste0("You are current using Tidyr version ",packageVersion("tidyr"),". The minimal requirement to use this function is version '1.2.0'. Please update tidyr by restarting R and running install.packages('tidyr'). "))
+    stop(paste0("You are currently using Tidyr version ",packageVersion("tidyr"),". The minimal requirement to use this function is version '1.2.0'. Please update tidyr by restarting R and running install.packages('tidyr'). "))
 
   }
 
