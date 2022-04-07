@@ -85,9 +85,9 @@ search_plenary <- function(date_range_from,date_range_to,use_parallel=FALSE){
                   ,datumeinde
                   ,journaallijn_id
                   ,type_activiteit
-                  ,item_id = id_id
+                  ,item_id = id
                   ,objecttype_naam
-                  ,onderwerp =onderwerp_onderwerp
+                  ,onderwerp =onderwerp
                   ,titel = titel_titel ) %>%
     filter(!is.na(item_id)) -> result
 
