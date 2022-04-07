@@ -30,7 +30,7 @@ search_terms <- function(plenary_object,search_terms,type="all",use_parallel=FAL
 
   }
 
-  if( all(!c("id_plenaire_sessie","journaallijn_id","type_activiteit","item_id") %in% names(plenary_object)) ){
+  if( all(!c("id_plenaire_sessie","journaallijn_id","type_activiteit") %in% names(plenary_object)) ){
 
     stop("Not a valid procedure object!")
 

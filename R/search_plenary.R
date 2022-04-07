@@ -80,16 +80,16 @@ search_plenary <- function(date_range_from,date_range_to,use_parallel=FALSE){
     tidyr::unnest(cols = c(contacttype, id, link, nummer, objectstatus, objecttype, onderwerp,
                     titel, verslagnognietbeschikbaar, zittingsjaar, document,
                     `namens-commissie`),names_sep="_") %>%
-  dplyr::select(id_plenaire_sessie
+    dplyr::select(id_plenaire_sessie
                   ,datumbegin
                   ,datumeinde
                   ,journaallijn_id
                   ,type_activiteit
-                  ,item_id = id
+                  ,id
                   ,objecttype_naam
-                  ,onderwerp =onderwerp
-                  ,titel = titel_titel ) %>%
-    filter(!is.na(item_id)) -> result
+                  ,onderwerp
+                  ,titel ) %>%
+    filter(!is.na(objecttype_naam)) -> result
 
   result %>%
     dplyr::group_by(type_activiteit) %>%
