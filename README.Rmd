@@ -35,14 +35,14 @@ library(Flempar)
 library(dplyr)
 
 # Get all the written questions between "2022-01-20" and "2022-01-31" in a dataframe
- wq_documents <- search_work(date_range_from="2022-01-20"
+ wq_documents <- get_data(date_range_from="2022-01-20"
                            , date_range_to="2022-01-31"
                            , type="document"
                            , fact="written_questions"
                            , use_parallel=TRUE )
                            
 # Get all the basic data on these written questions
- wq_basicdata <- search_work(date_range_from="2022-01-20"
+ wq_basicdata <- get_data(date_range_from="2022-01-20"
                            , date_range_to="2022-01-31"
                            , type="basicdata"
                            , fact="written_questions"
@@ -53,7 +53,7 @@ library(dplyr)
     left_join(wq_basicdata, by=c("id_fact"="id_fact")) -> wq_documents_basicdata
 
 # Get the bio information of the current MPs
-  mp_bio <- search_mp(selection="current",fact="bio",use_parallel=TRUE)
+  mp_bio <- get_mp(selection="current",fact="bio",use_parallel=TRUE)
 
 # Join the the MP data with the basic data to see who is asking questions     
   wq_basicdata %>%

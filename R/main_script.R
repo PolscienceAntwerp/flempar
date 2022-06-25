@@ -440,7 +440,7 @@ parse_documents <- function(mainlist,use_parallel=FALSE){
 #' @importFrom dplyr %>%
 get_written_questions_documents <- function(date_range_from,date_range_to,use_parallel=FALSE){
 
-  message(crayon::green(cli::symbol$tick,"Getting details on the written documents." ))
+  message(crayon::green(cli::symbol$tick,"Getting details on the documents." ))
 
   mainlist <- use_generalized_query(date_range_from=date_range_from,date_range_to=date_range_to)
 
@@ -1069,7 +1069,7 @@ get_plenn_comm_documents <- function(date_range_from,date_range_to,fact,plen_com
 
 }
 
-#' Search the data of the Flemish parliament
+#' Get data from the Flemish parliament
 #'
 #' @param type Type of data to be returned, options include "documents", "speech" or "basicdata."
 #' @param fact Which fact should be returned, options include "written_questions", "debates", "oral_questions_and_interpellations", "parlementary_initiatives" or"council_hearings"
@@ -1084,14 +1084,14 @@ get_plenn_comm_documents <- function(date_range_from,date_range_to,fact,plen_com
 #'
 #' \dontrun{
 #'
-#'  search_work(date_range_from="2022-01-20",
+#'  get_data(date_range_from="2022-01-20",
 #'              date_range_to="2022-01-31",
 #'              type="document",
 #'              fact="written_questions",
 #'              use_parallel=TRUE )
 #'
 #' }
-search_work <- function(type="speech", fact="debates", date_range_from ,date_range_to,plen_comm="plen",use_parallel=FALSE,raw=FALSE){
+get_data <- function(type="speech", fact="debates", date_range_from ,date_range_to,plen_comm="plen",use_parallel=FALSE,raw=FALSE){
 
   # Check input -------------------------------------------------------------
 
@@ -1218,7 +1218,7 @@ search_work <- function(type="speech", fact="debates", date_range_from ,date_ran
 #'
 #' \dontrun{
 #'
-#' wq_document <- search_work(date_range_from="2022-01-20",
+#' wq_document <- get_data(date_range_from="2022-01-20",
 #'                            date_range_to="2022-01-31",
 #'                            type="document",
 #'                            fact="written_questions",
@@ -1263,10 +1263,10 @@ search_terms <- function(df,text_field,search_terms=NULL){
 #' @examples
 #' \dontrun{
 #'
-#'  search_mp(use_parallel=TRUE,fact="bio",date_at="1998-01-01",selection="date")
+#'  get_mp(use_parallel=TRUE,fact="bio",date_at="1998-01-01",selection="date")
 #'
 #' }
-search_mp <- function(selection="current",fact="bio", date_at=NULL, use_parallel=FALSE){
+get_mp <- function(selection="current",fact="bio", date_at=NULL, use_parallel=FALSE){
 
   # warnings ----------------------------------------------------------------
 
