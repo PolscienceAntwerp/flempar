@@ -184,7 +184,7 @@ guarantee_field <- function(df, fields) {
 #' Get current and past legislatures of the Flemish parliament
 #'
 #' @importFrom dplyr %>%
-#'
+#' @export
 #' @examples
 #'
 #' \dontrun{
@@ -1069,6 +1069,142 @@ get_plenn_comm_documents <- function(date_range_from,date_range_to,fact,plen_com
 
 }
 
+#' Search the data of the Flemish parliament
+#'
+#' @param type Type of data to be returned, options include "documents", "speech" or "basicdata."
+#' @param fact Which fact should be returned, options include "written_questions", "debates", "oral_questions_and_interpellations", "parlementary_initiatives" or"council_hearings"
+#' @param date_range_from The start date, should be in format "yyyy-mm-dd".
+#' @param date_range_to The end date, should be in format "yyyy-mm-dd".
+#' @param plen_comm Switch to pick between plenary (plen) and commission (comm) sessions.
+#' @param use_parallel Boolean: should parallel workers be used to call the API?
+#' @param raw Boolean: Should the raw object be returned?
+#' @export
+#' @importFrom dplyr %>%
+#' @examples
+#'
+#' \dontrun{
+#'
+#'  search_work(date_range_from="2022-01-20",
+#'              date_range_to="2022-01-31",
+#'              type="document",
+#'              fact="written_questions",
+#'              use_parallel=TRUE )
+#'
+#' }
+search_work <- function(type="speech", fact="debates", date_range_from ,date_range_to,plen_comm="plen",use_parallel=FALSE,raw=FALSE){
+
+  # Check input -------------------------------------------------------------
+
+  type_list <- c("document","speech","basicdata")
+
+  facts_list <- c("written_questions","debates","oral_questions_and_interpellations","parlementary_initiatives","council_hearings")
+
+  #types
+  if(!any(type_list %in%type)){
+
+    stop(paste0("Supply valid type. Valid options are ",toString(tolower(type_list)),". Select one type."))
+
+  }
+
+  if(length(type)!=1){
+
+    stop("You have selected multiple type options. Please set type to ", toString(tolower(facts)),".")
+
+  }
+
+  #facts
+  if(!any(facts_list %in%fact)){
+
+    stop(paste0("Supply valid type. Valid options are ",toString(tolower(facts_list)),". Select one type."))
+
+  }
+
+  if(length(fact)!=1){
+
+    stop("You have selected multiple type options. Please set type to ", toString(tolower(facts_list)),".")
+
+  }
+
+  if("plen"%in%plen_comm & "council_hearings"%in%fact){
+
+    stop("You have selected an incompatible combination of type and fact (Council hearings are not held in plenary sessions).")
+
+  }
+
+  # Getting data ------------------------------------------------------------
+
+  # writtenquestions -> text
+  if("document"%in%type & "written_questions"%in%fact){
+
+    object <- get_written_questions_documents(date_range_from=date_range_from
+                                              ,date_range_to=date_range_to
+                                              ,use_parallel=use_parallel)
+
+    object %>%
+      dplyr::select(id_fact,text) %>%
+      as.data.frame -> result
+
+    return(result)
+
+
+  }
+
+  # writtenquestions -> basic
+  if("basicdata"%in%type & "written_questions"%in%fact){
+
+    object <-  get_written_questions_basicdata(date_range_from=date_range_from
+                                               ,date_range_to=date_range_to
+                                               ,use_parallel=use_parallel)
+
+    return(object)
+
+  }
+
+  # get speech from "debates","oral_questions_and_interpellations","parlementary_iniatives","council_hearings"
+  if("speech"%in%type & any(facts_list%in%fact)){
+
+    object <-  get_plen_comm_speech(date_range_from=date_range_from
+                                    ,date_range_to=date_range_to
+                                    ,plen_comm=plen_comm
+                                    ,fact=fact
+                                    ,use_parallel=use_parallel)
+
+    if(raw==TRUE){
+
+      return(object)
+
+    }
+
+    return(object)
+
+  }
+
+  # get basicdata from "debates","oral_questions_and_interpellations","parlementary_iniatives","council_hearings"
+  if("basicdata"%in%type & any(facts_list%in%fact)){
+
+    object <-  get_plen_comm_basicdata(date_range_from=date_range_from
+                                       ,date_range_to=date_range_to
+                                       ,plen_comm=plen_comm
+                                       ,fact=fact
+                                       ,use_parallel=use_parallel)
+
+
+    return(object)
+  }
+
+  # get documents from "debates","oral_questions_and_interpellations","parlementary_iniatives","council_hearings"
+  if("document"%in%type & any(facts_list%in%fact)){
+
+    object <-  get_plenn_comm_documents(date_range_from=date_range_from
+                                        ,date_range_to=date_range_to
+                                        ,plen_comm=plen_comm
+                                        ,fact=fact
+                                        ,use_parallel=use_parallel)
+    return(object)
+  }
+
+
+}
 
 
 #' Filter texts fields on certain search terms
@@ -1076,6 +1212,7 @@ get_plenn_comm_documents <- function(date_range_from,date_range_to,fact,plen_com
 #' @param df Data frame
 #' @param text_field Which textfield should be searched?
 #' @param search_terms The search terms. Multiple terms are possible by adding them as a vector with c(). This is not case sensitive.
+#' @export
 #' @importFrom dplyr %>%
 #' @examples
 #'
@@ -1121,7 +1258,7 @@ search_terms <- function(df,text_field,search_terms=NULL){
 #' @param date_at When selecting "date_at" in selection, provide date, should be in format "yyyy-mm-dd".
 #' @param fact Options of facts to return are 'raw', 'bio', 'education', 'career','political_info', 'presences_commissies' or 'presences_plenary'
 #' @param use_parallel Boolean: should parallel workers be used to call the API?
-#'
+#' @export
 #'
 #' @examples
 #' \dontrun{
