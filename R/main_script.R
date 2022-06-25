@@ -256,7 +256,7 @@ use_generalized_query <- function( type = "Schriftelijke vraag",date_range_from,
                         ,path=paste0("")
                         ,query=list())
 
-  tibble(robj$items) %>%
+  tibble::tibble(robj$items) %>%
     tidyr::unnest(cols = c(zittingsjaar),keep_empty = TRUE) %>%
     dplyr::mutate(eind = lubridate::ymd_hms(`eind-zittingsjaar` )) %>%
     dplyr::mutate(begin = lubridate::ymd_hms(`start-zittingsjaar` )) %>%
