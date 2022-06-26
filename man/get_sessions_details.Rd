@@ -8,7 +8,8 @@ get_sessions_details(
   date_range_from,
   date_range_to,
   plen_comm = "plen",
-  use_parallel = FALSE
+  use_parallel = FALSE,
+  raw = FALSE
 )
 }
 \arguments{
@@ -22,4 +23,14 @@ get_sessions_details(
 }
 \description{
 Get the details of sessions
+}
+\examples{
+\dontrun{
+
+get_sessions_details(date_range_from="2021-09-01"
+                     , date_range_to="2021-12-31"
+                     , plen_comm = "plen"
+                     , use_parallel=TRUE)
+
+}
 }

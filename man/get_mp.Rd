@@ -12,11 +12,11 @@ get_mp(
 )
 }
 \arguments{
-\item{selection}{select either "current", at a certain date ("date_at") or "former"}
+\item{selection}{select either "current", at a certain date ("date") or "former"}
 
-\item{fact}{Options of facts to return are 'raw', 'bio', 'education', 'career','political_info', 'presences_commissies' or 'presences_plenary'}
+\item{fact}{Options of facts to return are 'raw', 'bio', 'education', 'career','political_info', 'presences_commissions' or 'presences_plenary'}
 
-\item{date_at}{When selecting "date_at" in selection, provide date, should be in format "yyyy-mm-dd".}
+\item{date_at}{When selecting "date" in selection, provide date, should be in format "yyyy-mm-dd".}
 
 \item{use_parallel}{Boolean: should parallel workers be used to call the API?}
 }

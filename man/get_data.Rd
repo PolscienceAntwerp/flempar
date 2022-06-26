@@ -15,9 +15,9 @@ get_data(
 )
 }
 \arguments{
-\item{type}{Type of data to be returned, options include "documents", "speech" or "basicdata."}
+\item{type}{Type of data to be returned, options include "document", "speech" or "basicdata".}
 
-\item{fact}{Which fact should be returned, options include "written_questions", "debates", "oral_questions_and_interpellations", "parlementary_initiatives" or"council_hearings"}
+\item{fact}{Which fact should be returned, options include "written_questions", "debates", "oral_questions_and_interpellations", "parlementary_initiatives" or "council_hearings"}
 
 \item{date_range_from}{The start date, should be in format "yyyy-mm-dd".}
 

@@ -9,7 +9,8 @@ get_plenn_comm_documents(
   date_range_to,
   fact,
   plen_comm = "plen",
-  use_parallel = FALSE
+  use_parallel = FALSE,
+  raw = FALSE
 )
 }
 \arguments{

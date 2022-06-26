@@ -12,6 +12,7 @@ Get current and past legislatures of the Flemish parliament
 \examples{
 
 \dontrun{
+
 get_legislatures()
 }
 }
