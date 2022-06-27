@@ -718,7 +718,7 @@ get_sessions_details <- function(date_range_from,date_range_to,plen_comm = "plen
 #' @param fact The fact to search.
 #' @param plen_comm Switch to pick between plenary (plen) and commission (comm) sessions.
 #' @param use_parallel Boolean: should parallel workers be used to call the API?
-#' @param raw Boolean: Should the raw object be returned?
+#' @param raw Boolean: should the raw object be returned?
 #' @importFrom dplyr %>%
 get_plen_comm_speech <- function(date_range_from,date_range_to,fact,plen_comm = "plen",use_parallel=FALSE,raw=FALSE) {
 
@@ -727,7 +727,7 @@ get_plen_comm_speech <- function(date_range_from,date_range_to,fact,plen_comm = 
     "Schriftelijke vraag",          "written_questions",
     "debatten",                     "debates",
     "vragen_interpelaties",         "oral_questions_and_interpellations",
-    "parlementaire_initiatieven",   "parlementary_initiatives",
+    "parlementaire_initiatieven",   "parliamentary_initiatives",
     "gedachtenwisselingen",         "council_hearings",
     "verzoekschriften",             "petitions"
   ) -> type_conv
@@ -781,7 +781,7 @@ get_plen_comm_speech <- function(date_range_from,date_range_to,fact,plen_comm = 
 #' @param fact The fact to search
 #' @param plen_comm Switch to pick between plenary (plen) and commission (comm) sessions.
 #' @param use_parallel Boolean: should parallel workers be used to call the API?
-#' @param raw Boolean: Should the raw object be returned?
+#' @param raw Boolean: should the raw object be returned?
 #' @importFrom dplyr %>%
 get_plen_comm_basicdata <- function(date_range_from,date_range_to,fact,plen_comm = "plen",use_parallel=FALSE,raw=FALSE) {
 
@@ -793,7 +793,7 @@ get_plen_comm_basicdata <- function(date_range_from,date_range_to,fact,plen_comm
     "Schriftelijke vraag",          "written_questions",
     "debatten",                     "debates",
     "vragen_interpelaties",         "oral_questions_and_interpellations",
-    "parlementaire_initiatieven",   "parlementary_initiatives",
+    "parlementaire_initiatieven",   "parliamentary_initiatives",
     "gedachtenwisselingen",         "council_hearings",
     "verzoekschriften",             "petitions"
   ) -> type_conv
@@ -807,6 +807,7 @@ get_plen_comm_basicdata <- function(date_range_from,date_range_to,fact,plen_comm
     dplyr::left_join(type_conv,by=c("type_activiteit"="type_nl"))%>%
     dplyr::filter(type_eng%in%fact) %>%
     dplyr::select(fact_link) %>%
+    tidyr::unnest(fact_link,keep_empty = TRUE) %>%
     dplyr::mutate(id = stringr::str_sub(fact_link,start=-7)) %>%
     dplyr::mutate(url = stringr::str_sub(fact_link,end=-8)) %>%
     dplyr::distinct()  -> mainlist
@@ -861,7 +862,7 @@ get_plen_comm_basicdata <- function(date_range_from,date_range_to,fact,plen_comm
 
   }
 
-  if(fact=="parlementary_initiatives"){
+  if(fact=="parliamentary_initiatives"){
 
     result %>%
       tibble::tibble(result = ., id_fact = names(result)) %>%
@@ -997,7 +998,7 @@ get_plenn_comm_documents <- function(date_range_from,date_range_to,fact,plen_com
     "Schriftelijke vraag",          "written_questions",
     "debatten",                     "debates",
     "vragen_interpelaties",         "oral_questions_and_interpellations",
-    "parlementaire_initiatieven",   "parlementary_initiatives",
+    "parlementaire_initiatieven",   "parliamentary_initiatives",
     "gedachtenwisselingen",         "council_hearings",
     "verzoekschriften",             "petitions"
   ) -> type_conv
@@ -1017,7 +1018,7 @@ get_plenn_comm_documents <- function(date_range_from,date_range_to,fact,plen_com
 
   # Getting the documents in the details of FACT ----------------------------
 
-  if(fact %in% c("parlementary_initiatives","council_hearings")){
+  if(fact %in% c("parliamentary_initiatives","council_hearings")){
 
     message(crayon::green(cli::symbol$tick,"Getting extra document data." ))
 
@@ -1089,12 +1090,12 @@ get_plenn_comm_documents <- function(date_range_from,date_range_to,fact,plen_com
 #' Get data from the Flemish parliament
 #'
 #' @param type Type of data to be returned, options include "document", "speech" or "basicdata".
-#' @param fact Which fact should be returned, options include "written_questions", "debates", "oral_questions_and_interpellations", "parlementary_initiatives" or "council_hearings"
+#' @param fact Which fact should be returned, options include "written_questions", "debates", "oral_questions_and_interpellations", "parliamentary_initiatives" or "council_hearings"
 #' @param date_range_from The start date, should be in format "yyyy-mm-dd".
 #' @param date_range_to The end date, should be in format "yyyy-mm-dd".
 #' @param plen_comm Switch to pick between plenary (plen) and commission (comm) sessions.
 #' @param use_parallel Boolean: should parallel workers be used to call the API?
-#' @param raw Boolean: Should the raw object be returned?
+#' @param raw Boolean: should the raw object be returned?
 #' @export
 #' @importFrom dplyr %>%
 #' @examples
@@ -1114,7 +1115,7 @@ get_data <- function(type="speech", fact="debates", date_range_from ,date_range_
 
   type_list <- c("document","speech","basicdata")
 
-  facts_list <- c("written_questions","debates","oral_questions_and_interpellations","parlementary_initiatives","council_hearings")
+  facts_list <- c("written_questions","debates","oral_questions_and_interpellations","parliamentary_initiatives","council_hearings")
 
   #types
   if(!any(type_list %in%type)){
@@ -1177,7 +1178,7 @@ get_data <- function(type="speech", fact="debates", date_range_from ,date_range_
 
   }
 
-  # get speech from "debates","oral_questions_and_interpellations","parlementary_iniatives","council_hearings"
+  # get speech from "debates","oral_questions_and_interpellations","parliamentary_initiatives","council_hearings"
   if("speech"%in%type & any(facts_list%in%fact)){
 
     object <-  get_plen_comm_speech(date_range_from=date_range_from
@@ -1197,7 +1198,7 @@ get_data <- function(type="speech", fact="debates", date_range_from ,date_range_
 
   }
 
-  # get basicdata from "debates","oral_questions_and_interpellations","parlementary_iniatives","council_hearings"
+  # get basicdata from "debates","oral_questions_and_interpellations","parliamentary_initiatives","council_hearings"
   if("basicdata"%in%type & any(facts_list%in%fact)){
 
     object <-  get_plen_comm_basicdata(date_range_from=date_range_from
@@ -1211,7 +1212,7 @@ get_data <- function(type="speech", fact="debates", date_range_from ,date_range_
     return(object)
   }
 
-  # get documents from "debates","oral_questions_and_interpellations","parlementary_iniatives","council_hearings"
+  # get documents from "debates","oral_questions_and_interpellations","parliamentary_initiatives","council_hearings"
   if("document"%in%type & any(facts_list%in%fact)){
 
     object <-  get_plenn_comm_documents(date_range_from=date_range_from

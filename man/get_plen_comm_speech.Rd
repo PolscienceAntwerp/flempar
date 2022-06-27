@@ -24,7 +24,7 @@ get_plen_comm_speech(
 
 \item{use_parallel}{Boolean: should parallel workers be used to call the API?}
 
-\item{raw}{Boolean: Should the raw object be returned?}
+\item{raw}{Boolean: should the raw object be returned?}
 }
 \description{
 Get the speech of either plenary or commission sessions
