@@ -26,7 +26,7 @@ install_github("PolscienceAntwerp/Flempar")
 ```
 ## Usage
 
-Under its open data policy the Flemish parliament publishes its data on parliamentary proceedings via API. This API contains a large amount of data on MPs, legislative work, voting parliamentary documents.
+Under an open data policy,the Flemish parliament publishes data on parliamentary proceedings via API. This data source contains a large amount of data on MPs, legislative work, voting and parliamentary documents.
 
 To boost performance it is possible to divide the calls over several workers, enabling to shorten your waiting time.
 
