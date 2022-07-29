@@ -30,6 +30,7 @@ Under an open data policy,the Flemish parliament publishes data on parliamentary
 
 To boost performance it is possible to divide the calls over several workers, enabling to shorten your waiting time.
 
+
 ``` r
 library(Flempar)
 library(dplyr)
