@@ -23,6 +23,8 @@ get_plen_comm_documents(
 \item{plen_comm}{Switch to pick between plenary (plen) and commission (comm) sessions.}
 
 \item{use_parallel}{Boolean: should parallel workers be used to call the API?}
+
+\item{raw}{Boolean: should the raw object be returned?}
 }
 \description{
 Get the documents discussed in plenary or commission sessions

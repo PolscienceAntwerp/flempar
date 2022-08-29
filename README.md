@@ -1,15 +1,21 @@
 
-# Flempar
+<!-- README.md is generated from README.Rmd. Please edit that file -->
 
-Flempar is an interface to the API of the Flemish parliament.
+# flempar
+
+<!-- badges: start -->
+<!-- badges: end -->
+
+The package flempar is an interface to the API of the Flemish
+parliament.
 
 ## Installation
 
-You can install the released version of Flempar from this repo with:
+You can install the released version of glempar from this repo with:
 
 ``` r
 require(devtools)
-install_github("PolscienceAntwerp/Flempar")
+install_github("PolscienceAntwerp/flempar")
 ```
 
 ## Usage
@@ -22,23 +28,25 @@ documents.
 To boost performance it is possible to divide the calls over several
 workers, enabling to shorten your waiting time.
 
+## Example
+
 ``` r
-library(Flempar)
+library(flempar)
 library(dplyr)
 
 # Get all the written questions between "2022-01-20" and "2022-01-31" in a dataframe
- wq_documents <- get_data(date_range_from="2022-01-20"
+ wq_documents <- get_work(date_range_from="2022-01-20"
                            , date_range_to="2022-01-31"
                            , type="document"
                            , fact="written_questions"
-                           , use_parallel=TRUE )
+                           )
                            
 # Get all the basic data on these written questions
- wq_basicdata <- get_data(date_range_from="2022-01-20"
+ wq_basicdata <- get_work(date_range_from="2022-01-20"
                            , date_range_to="2022-01-31"
                            , type="basicdata"
                            , fact="written_questions"
-                           , use_parallel=TRUE )
+                           )
                            
 # Join the content of the written questions with the basic data
   wq_documents %>%

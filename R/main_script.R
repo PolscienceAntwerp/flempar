@@ -513,6 +513,7 @@ get_written_questions_details <- function(date_range_from,date_range_to,use_para
 #' @param date_range_to The end date, should be in format "yyyy-mm-dd".
 #' @param plen_comm Switch to pick between plenary (plen) and commission (comm) sessions.
 #' @param use_parallel Boolean: should parallel workers be used to call the API?
+#' @param raw Boolean: should the raw object be returned?
 #' @export
 #' @importFrom dplyr %>%
 #' @examples
@@ -988,6 +989,7 @@ get_plen_comm_details <- function(date_range_from,date_range_to,fact,plen_comm =
 #' @param fact The fact to search.
 #' @param plen_comm Switch to pick between plenary (plen) and commission (comm) sessions.
 #' @param use_parallel Boolean: should parallel workers be used to call the API?
+#' @param raw Boolean: should the raw object be returned?
 #' @importFrom dplyr %>%
 get_plen_comm_documents <- function(date_range_from,date_range_to,fact,plen_comm= "plen",use_parallel=TRUE,raw=FALSE){
 
