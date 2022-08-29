@@ -44,7 +44,7 @@ library(dplyr)
 # Get all the basic data on these written questions
  wq_basicdata <- get_work(date_range_from="2022-01-20"
                            , date_range_to="2022-01-31"
-                           , type="basicdata"
+                           , type="details"
                            , fact="written_questions"
                            )
                            

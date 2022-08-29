@@ -1419,7 +1419,7 @@ get_mp <- function(selection="current",fact="bio", date_at=NULL, use_parallel=TR
       tidyr::unnest_wider(vv) %>%
       dplyr::select(id_mp=id,voornaam, achternaam=naam,geslacht,geboortedatum,geboorteplaats,gsmnr,email,website,huidigefractie) %>%
       tidyr::unnest_wider(huidigefractie) %>%
-      dplyr::select(voornaam, achternaam=naam,geslacht,geboortedatum,geboorteplaats,gsmnr,email,website,party_id=id,party_naam = naam) %>%
+      dplyr::select(id_mp,voornaam, achternaam=naam,geslacht,geboortedatum,geboorteplaats,gsmnr,email,website,party_id=id,party_naam = naam) %>%
       dplyr::mutate(geboortedatum = lubridate::date(lubridate::ymd_hms(geboortedatum))) %>%
       tidyr::unnest_wider(email ,names_sep="_")  %>%
       tidyr::unnest(website ,names_sep="_",keep_empty =TRUE) %>%
