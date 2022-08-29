@@ -7,8 +7,8 @@
 get_work(
   date_range_from,
   date_range_to,
-  type = "details",
   fact = "debates",
+  type = "details",
   plen_comm = "plen",
   use_parallel = TRUE,
   raw = FALSE
@@ -19,9 +19,9 @@ get_work(
 
 \item{date_range_to}{The end date, should be in format "yyyy-mm-dd".}
 
-\item{type}{Type of data to be returned, options include "document", "speech" or "details".}
-
 \item{fact}{Which fact should be returned, options include "written_questions", "debates", "oral_questions_and_interpellations", "parliamentary_initiatives" or "council_hearings"}
+
+\item{type}{Type of data to be returned, options include "document", "speech" or "details".}
 
 \item{plen_comm}{Switch to pick between plenary (plen) and commission (comm) sessions.}
 
