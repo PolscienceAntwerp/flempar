@@ -239,9 +239,9 @@ get_all_agg_types <- function(){
 
 #' Get data by using the native query engine
 #'
-#' @param type Vector of types, see get_all_agg_types() for all options
 #' @param date_range_from The start date, should be in format "yyyy-mm-dd".
 #' @param date_range_to The end date, should be in format "yyyy-mm-dd".
+#' @param type Vector of types, see get_all_agg_types() for all options
 #' @importFrom dplyr %>%
 use_generalized_query <- function(date_range_from,date_range_to, type = "Schriftelijke vraag"){
 
@@ -1091,10 +1091,10 @@ get_plen_comm_documents <- function(date_range_from,date_range_to,fact,plen_comm
 
 #' Get data from the Flemish parliament
 #'
-#' @param type Type of data to be returned, options include "document", "speech" or "details".
-#' @param fact Which fact should be returned, options include "written_questions", "debates", "oral_questions_and_interpellations", "parliamentary_initiatives" or "council_hearings"
 #' @param date_range_from The start date, should be in format "yyyy-mm-dd".
 #' @param date_range_to The end date, should be in format "yyyy-mm-dd".
+#' @param fact Which fact should be returned, options include "written_questions", "debates", "oral_questions_and_interpellations", "parliamentary_initiatives" or "council_hearings"
+#' @param type Type of data to be returned, options include "document", "speech" or "details".
 #' @param plen_comm Switch to pick between plenary (plen) and commission (comm) sessions.
 #' @param use_parallel Boolean: should parallel workers be used to call the API?
 #' @param raw Boolean: should the raw object be returned?
@@ -1111,7 +1111,7 @@ get_plen_comm_documents <- function(date_range_from,date_range_to,fact,plen_comm
 #'              use_parallel=TRUE )
 #'
 #' }
-get_work <- function(date_range_from, date_range_to,type="details", fact="debates",plen_comm="plen",use_parallel=TRUE,raw=FALSE){
+get_work <- function(date_range_from, date_range_to, fact="debates", type="details",plen_comm="plen",use_parallel=TRUE,raw=FALSE){
 
   # Check input -------------------------------------------------------------
 
