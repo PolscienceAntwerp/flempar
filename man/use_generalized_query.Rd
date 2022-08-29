@@ -5,17 +5,17 @@
 \title{Get data by using the native query engine}
 \usage{
 use_generalized_query(
-  type = "Schriftelijke vraag",
   date_range_from,
-  date_range_to
+  date_range_to,
+  type = "Schriftelijke vraag"
 )
 }
 \arguments{
-\item{type}{Vector of types, see get_all_agg_types() for all options}
-
 \item{date_range_from}{The start date, should be in format "yyyy-mm-dd".}
 
 \item{date_range_to}{The end date, should be in format "yyyy-mm-dd".}
+
+\item{type}{Vector of types, see get_all_agg_types() for all options}
 }
 \description{
 Get data by using the native query engine

@@ -8,7 +8,7 @@ get_mp(
   selection = "current",
   fact = "bio",
   date_at = NULL,
-  use_parallel = FALSE
+  use_parallel = TRUE
 )
 }
 \arguments{

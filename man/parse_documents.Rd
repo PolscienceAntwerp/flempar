@@ -4,7 +4,7 @@
 \alias{parse_documents}
 \title{Parse PDF documents}
 \usage{
-parse_documents(mainlist, use_parallel = FALSE)
+parse_documents(mainlist, use_parallel = TRUE)
 }
 \arguments{
 \item{mainlist}{Data frame with documents to be parsed}

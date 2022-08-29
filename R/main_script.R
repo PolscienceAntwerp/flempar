@@ -62,7 +62,7 @@ call_api_multiple_times <- function(iterator, URL, path, query, resultVector,use
 
     }
 
-    message(crayon::green(cli::symbol$tick,"Dividing the calls between", parallel::detectCores() - 1, "workers."))
+    # message(crayon::green(cli::symbol$tick,"Dividing the calls between", parallel::detectCores() - 1, "workers."))
 
     cl <- parallel::makeCluster(parallel::detectCores() - 1)
     doParallel::registerDoParallel(cl)
@@ -243,7 +243,7 @@ get_all_agg_types <- function(){
 #' @param date_range_from The start date, should be in format "yyyy-mm-dd".
 #' @param date_range_to The end date, should be in format "yyyy-mm-dd".
 #' @importFrom dplyr %>%
-use_generalized_query <- function( type = "Schriftelijke vraag",date_range_from,date_range_to){
+use_generalized_query <- function(date_range_from,date_range_to, type = "Schriftelijke vraag"){
 
   if(any(is.na(c(lubridate::ymd(date_range_from),lubridate::ymd(date_range_to))))){
 
@@ -336,7 +336,7 @@ use_generalized_query <- function( type = "Schriftelijke vraag",date_range_from,
 #' @importFrom foreach %dopar%
 #' @importFrom utils object.size
 #' @importFrom dplyr %>%
-parse_documents <- function(mainlist,use_parallel=FALSE){
+parse_documents <- function(mainlist,use_parallel=TRUE){
 
   message(crayon::green(cli::symbol$tick,"Making",length(mainlist$document),"calls." ))
 
@@ -348,7 +348,7 @@ parse_documents <- function(mainlist,use_parallel=FALSE){
 
     }
 
-    message(crayon::green(cli::symbol$tick,"Dividing the calls between", parallel::detectCores() - 1, "workers."))
+   # message(crayon::green(cli::symbol$tick,"Dividing the calls between", parallel::detectCores() - 1, "workers."))
 
     cl <- parallel::makeCluster(parallel::detectCores() - 1)
     doParallel::registerDoParallel(cl)
@@ -443,7 +443,7 @@ parse_documents <- function(mainlist,use_parallel=FALSE){
 #' @param date_range_to The end date, should be in format "yyyy-mm-dd".
 #' @param use_parallel Boolean: should parallel workers be used to call the API?
 #' @importFrom dplyr %>%
-get_written_questions_documents <- function(date_range_from,date_range_to,use_parallel=FALSE){
+get_written_questions_documents <- function(date_range_from,date_range_to,use_parallel=TRUE){
 
   message(crayon::green(cli::symbol$tick,"Getting details on the documents." ))
 
@@ -461,13 +461,13 @@ get_written_questions_documents <- function(date_range_from,date_range_to,use_pa
 } #end function
 
 
-#' Get the basic data of the written questions
+#' Get the details of the written questions
 #'
 #' @param date_range_from The start date, should be in format "yyyy-mm-dd".
 #' @param date_range_to The end date, should be in format "yyyy-mm-dd".
 #' @param use_parallel Boolean: should parallel workers be used to call the API?
 #' @importFrom dplyr %>%
-get_written_questions_basicdata <- function(date_range_from,date_range_to,use_parallel=FALSE){
+get_written_questions_details <- function(date_range_from,date_range_to,use_parallel=TRUE){
 
   message(crayon::green(cli::symbol$tick,"Searching for written questions." ))
 
@@ -524,7 +524,7 @@ get_written_questions_basicdata <- function(date_range_from,date_range_to,use_pa
 #'                      , use_parallel=TRUE)
 #'
 #' }
-get_sessions_details <- function(date_range_from,date_range_to,plen_comm = "plen",use_parallel=FALSE,raw=FALSE){
+get_sessions_details <- function(date_range_from,date_range_to,plen_comm = "plen",use_parallel=TRUE,raw=FALSE){
 
   # warnings ----------------------------------------------------------------
 
@@ -720,7 +720,7 @@ get_sessions_details <- function(date_range_from,date_range_to,plen_comm = "plen
 #' @param use_parallel Boolean: should parallel workers be used to call the API?
 #' @param raw Boolean: should the raw object be returned?
 #' @importFrom dplyr %>%
-get_plen_comm_speech <- function(date_range_from,date_range_to,fact,plen_comm = "plen",use_parallel=FALSE,raw=FALSE) {
+get_plen_comm_speech <- function(date_range_from,date_range_to,fact,plen_comm = "plen",use_parallel=TRUE,raw=FALSE) {
 
   tibble::tribble(
     ~type_nl,                      ~type_eng,
@@ -774,7 +774,7 @@ get_plen_comm_speech <- function(date_range_from,date_range_to,fact,plen_comm = 
 
 }
 
-#' Get the basic data from plenary or commission sessions
+#' Get the details from plenary or commission sessions
 #'
 #' @param date_range_from The start date, should be in format "yyyy-mm-dd".
 #' @param date_range_to The end date, should be in format "yyyy-mm-dd".
@@ -783,7 +783,7 @@ get_plen_comm_speech <- function(date_range_from,date_range_to,fact,plen_comm = 
 #' @param use_parallel Boolean: should parallel workers be used to call the API?
 #' @param raw Boolean: should the raw object be returned?
 #' @importFrom dplyr %>%
-get_plen_comm_basicdata <- function(date_range_from,date_range_to,fact,plen_comm = "plen",use_parallel=FALSE,raw=FALSE) {
+get_plen_comm_details <- function(date_range_from,date_range_to,fact,plen_comm = "plen",use_parallel=TRUE,raw=FALSE) {
 
   # date_range_from <- "2021-01-01"
   # date_range_to  <- "2021-02-28"
@@ -818,7 +818,7 @@ get_plen_comm_basicdata <- function(date_range_from,date_range_to,fact,plen_comm
 
   }
 
-  message(crayon::green(cli::symbol$tick,"Getting and parsing the basic data." ))
+  message(crayon::green(cli::symbol$tick,"Getting and parsing the details." ))
 
   result <- call_api_multiple_times(iterator=mainlist$id,
                                     URL = mainlist$url,
@@ -989,7 +989,7 @@ get_plen_comm_basicdata <- function(date_range_from,date_range_to,fact,plen_comm
 #' @param plen_comm Switch to pick between plenary (plen) and commission (comm) sessions.
 #' @param use_parallel Boolean: should parallel workers be used to call the API?
 #' @importFrom dplyr %>%
-get_plenn_comm_documents <- function(date_range_from,date_range_to,fact,plen_comm= "plen",use_parallel=FALSE,raw=FALSE){
+get_plen_comm_documents <- function(date_range_from,date_range_to,fact,plen_comm= "plen",use_parallel=TRUE,raw=FALSE){
 
   # Getting the documents in the details of VERG ----------------------------
 
@@ -1089,7 +1089,7 @@ get_plenn_comm_documents <- function(date_range_from,date_range_to,fact,plen_com
 
 #' Get data from the Flemish parliament
 #'
-#' @param type Type of data to be returned, options include "document", "speech" or "basicdata".
+#' @param type Type of data to be returned, options include "document", "speech" or "details".
 #' @param fact Which fact should be returned, options include "written_questions", "debates", "oral_questions_and_interpellations", "parliamentary_initiatives" or "council_hearings"
 #' @param date_range_from The start date, should be in format "yyyy-mm-dd".
 #' @param date_range_to The end date, should be in format "yyyy-mm-dd".
@@ -1102,18 +1102,18 @@ get_plenn_comm_documents <- function(date_range_from,date_range_to,fact,plen_com
 #'
 #' \dontrun{
 #'
-#'  get_data(date_range_from="2022-01-20",
+#'  get_work(date_range_from="2022-01-20",
 #'              date_range_to="2022-01-31",
 #'              type="document",
 #'              fact="written_questions",
 #'              use_parallel=TRUE )
 #'
 #' }
-get_data <- function(type="speech", fact="debates", date_range_from ,date_range_to,plen_comm="plen",use_parallel=FALSE,raw=FALSE){
+get_work <- function(date_range_from, date_range_to,type="details", fact="debates",plen_comm="plen",use_parallel=TRUE,raw=FALSE){
 
   # Check input -------------------------------------------------------------
 
-  type_list <- c("document","speech","basicdata")
+  type_list <- c("document","speech","details")
 
   facts_list <- c("written_questions","debates","oral_questions_and_interpellations","parliamentary_initiatives","council_hearings")
 
@@ -1168,9 +1168,9 @@ get_data <- function(type="speech", fact="debates", date_range_from ,date_range_
   }
 
   # writtenquestions -> basic
-  if("basicdata"%in%type & "written_questions"%in%fact){
+  if("details"%in%type & "written_questions"%in%fact){
 
-    object <-  get_written_questions_basicdata(date_range_from=date_range_from
+    object <-  get_written_questions_details(date_range_from=date_range_from
                                                ,date_range_to=date_range_to
                                                ,use_parallel=use_parallel)
 
@@ -1198,10 +1198,10 @@ get_data <- function(type="speech", fact="debates", date_range_from ,date_range_
 
   }
 
-  # get basicdata from "debates","oral_questions_and_interpellations","parliamentary_initiatives","council_hearings"
-  if("basicdata"%in%type & any(facts_list%in%fact)){
+  # get details from "debates","oral_questions_and_interpellations","parliamentary_initiatives","council_hearings"
+  if("details"%in%type & any(facts_list%in%fact)){
 
-    object <-  get_plen_comm_basicdata(date_range_from=date_range_from
+    object <-  get_plen_comm_details(date_range_from=date_range_from
                                        ,date_range_to=date_range_to
                                        ,plen_comm=plen_comm
                                        ,fact=fact
@@ -1215,7 +1215,7 @@ get_data <- function(type="speech", fact="debates", date_range_from ,date_range_
   # get documents from "debates","oral_questions_and_interpellations","parliamentary_initiatives","council_hearings"
   if("document"%in%type & any(facts_list%in%fact)){
 
-    object <-  get_plenn_comm_documents(date_range_from=date_range_from
+    object <-  get_plen_comm_documents(date_range_from=date_range_from
                                         ,date_range_to=date_range_to
                                         ,plen_comm=plen_comm
                                         ,fact=fact
@@ -1239,7 +1239,7 @@ get_data <- function(type="speech", fact="debates", date_range_from ,date_range_
 #'
 #' \dontrun{
 #'
-#' wq_document <- get_data(date_range_from="2022-01-20",
+#' wq_document <- get_work(date_range_from="2022-01-20",
 #'                            date_range_to="2022-01-31",
 #'                            type="document",
 #'                            fact="written_questions",
@@ -1287,7 +1287,7 @@ search_terms <- function(df,text_field,search_terms=NULL){
 #'  get_mp(use_parallel=TRUE,fact="bio",date_at="1998-01-01",selection="date")
 #'
 #' }
-get_mp <- function(selection="current",fact="bio", date_at=NULL, use_parallel=FALSE){
+get_mp <- function(selection="current",fact="bio", date_at=NULL, use_parallel=TRUE){
 
   # warnings ----------------------------------------------------------------
 
@@ -1313,7 +1313,7 @@ get_mp <- function(selection="current",fact="bio", date_at=NULL, use_parallel=FA
 
   # getting the data --------------------------------------------------------
 
-  message(crayon::green(cli::symbol$tick,"Getting the data." ))
+  #message(crayon::green(cli::symbol$tick,"Getting the data." ))
 
 
   # CURRENT
@@ -1415,7 +1415,9 @@ get_mp <- function(selection="current",fact="bio", date_at=NULL, use_parallel=FA
     mainlist %>%
       tibble::tibble(vv = .) %>%
       tidyr::unnest_wider(vv) %>%
-      dplyr::select(id_mp=id,voornaam, achternaam=naam,geslacht,geboortedatum,geboorteplaats,gsmnr,email,website) %>%
+      dplyr::select(id_mp=id,voornaam, achternaam=naam,geslacht,geboortedatum,geboorteplaats,gsmnr,email,website,huidigefractie) %>%
+      tidyr::unnest_wider(huidigefractie) %>%
+      dplyr::select(voornaam, achternaam=naam,geslacht,geboortedatum,geboorteplaats,gsmnr,email,website,party_id=id,party_naam = naam) %>%
       dplyr::mutate(geboortedatum = lubridate::date(lubridate::ymd_hms(geboortedatum))) %>%
       tidyr::unnest_wider(email ,names_sep="_")  %>%
       tidyr::unnest(website ,names_sep="_",keep_empty =TRUE) %>%
@@ -1433,7 +1435,7 @@ get_mp <- function(selection="current",fact="bio", date_at=NULL, use_parallel=FA
       tibble::tibble(vv = .) %>%
       tidyr::unnest_wider(vv) %>%
       guarantee_field(c("opleiding")) %>%
-      dplyr::select(id,voornaam,naam, opleiding) %>%
+      dplyr::select(id_mp=id,voornaam,naam, opleiding) %>%
       tidyr::unnest(opleiding,keep_empty = TRUE) -> result
 
     return(result)
@@ -1446,7 +1448,7 @@ get_mp <- function(selection="current",fact="bio", date_at=NULL, use_parallel=FA
       tibble::tibble(vv = .) %>%
       tidyr::unnest_wider(vv) %>%
       guarantee_field(c("beroep")) %>%
-      dplyr::select(id,voornaam,naam, beroep) %>%
+      dplyr::select(id_mp=id,voornaam,naam, beroep) %>%
       tidyr::unnest(beroep,keep_empty = TRUE) %>%
       guarantee_field(c("datumvanformaat","datumtotformaat")) %>%
       dplyr::select(-datumtotformaat,-datumvanformaat) %>%
@@ -1461,7 +1463,7 @@ get_mp <- function(selection="current",fact="bio", date_at=NULL, use_parallel=FA
     mainlist %>%
       tibble::tibble(vv = .) %>%
       tidyr::unnest_wider(vv) %>%
-      dplyr::select(id,voornaam,naam, aanwezigheden=`aanwezigheden-huidige-legislatuur`) %>%
+      dplyr::select(id_mp=id,voornaam,naam, aanwezigheden=`aanwezigheden-huidige-legislatuur`) %>%
       tidyr::unnest_longer(aanwezigheden) %>%
       dplyr::filter(aanwezigheden_id=="commissie-aanw") %>%
       tidyr::unnest_wider(aanwezigheden) %>%
@@ -1476,7 +1478,7 @@ get_mp <- function(selection="current",fact="bio", date_at=NULL, use_parallel=FA
     mainlist %>%
       tibble::tibble(vv = .) %>%
       tidyr::unnest_wider(vv) %>%
-      dplyr::select(id,voornaam,naam, aanwezigheden=`aanwezigheden-huidige-legislatuur`) %>%
+      dplyr::select(id_mp=id,voornaam,naam, aanwezigheden=`aanwezigheden-huidige-legislatuur`) %>%
       tidyr::unnest_longer(aanwezigheden) %>%
       dplyr::filter(aanwezigheden_id=="plenaire-aanw") %>%
       tidyr::unnest_wider(aanwezigheden)  -> result
@@ -1490,7 +1492,7 @@ get_mp <- function(selection="current",fact="bio", date_at=NULL, use_parallel=FA
     mainlist %>%
       tibble::tibble(vv = .) %>%
       tidyr::unnest_wider(vv) %>%
-      dplyr::select(id
+      dplyr::select(id_mp=id
                     ,voornaam,naam
                     ,huidigefractie
                     ,mandaat_vl=`mandaat-vlaams-parlement`

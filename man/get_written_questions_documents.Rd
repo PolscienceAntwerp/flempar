@@ -7,7 +7,7 @@
 get_written_questions_documents(
   date_range_from,
   date_range_to,
-  use_parallel = FALSE
+  use_parallel = TRUE
 )
 }
 \arguments{

@@ -11,17 +11,17 @@ knitr::opts_chunk$set(
 )
 ```
 
-# Flempar
+# flempar
 
 Flempar is an interface to the API of the Flemish parliament. 
 
 ## Installation
 
-You can install the released version of Flempar from this repo with:
+You can install the released version of flempar from this repo with:
 
 ``` r
 require(devtools)
-install_github("PolscienceAntwerp/Flempar")
+install_github("PolscienceAntwerp/flempar")
 
 ```
 ## Usage
@@ -32,7 +32,7 @@ To boost performance it is possible to divide the calls over several workers, en
 
 
 ``` r
-library(Flempar)
+library(flempar)
 library(dplyr)
 
 # Get all the written questions between "2022-01-20" and "2022-01-31" in a dataframe

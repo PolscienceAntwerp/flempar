@@ -9,7 +9,7 @@ get_plen_comm_speech(
   date_range_to,
   fact,
   plen_comm = "plen",
-  use_parallel = FALSE,
+  use_parallel = TRUE,
   raw = FALSE
 )
 }

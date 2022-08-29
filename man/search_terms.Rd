@@ -20,7 +20,7 @@ Filter texts fields on certain search terms
 
 \dontrun{
 
-wq_document <- get_data(date_range_from="2022-01-20",
+wq_document <- get_work(date_range_from="2022-01-20",
                            date_range_to="2022-01-31",
                            type="document",
                            fact="written_questions",
