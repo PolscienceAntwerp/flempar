@@ -514,6 +514,7 @@ get_written_questions_details <- function(date_range_from,date_range_to,use_para
 #' @param plen_comm Switch to pick between plenary (plen) and commission (comm) sessions.
 #' @param use_parallel Boolean: should parallel workers be used to call the API?
 #' @param raw Boolean: should the raw object be returned?
+#' @param extra_via_fact Boolean: also search the underlying endpoint for linked documents? This may return documents not linked to the specific meeting, thus may also include meetings on dates before/after the date range.
 #' @export
 #' @importFrom dplyr %>%
 #' @examples
@@ -525,7 +526,7 @@ get_written_questions_details <- function(date_range_from,date_range_to,use_para
 #'                      , use_parallel=TRUE)
 #'
 #' }
-get_sessions_details <- function(date_range_from,date_range_to,plen_comm = "plen",use_parallel=TRUE,raw=FALSE){
+get_sessions_details <- function(date_range_from,date_range_to,plen_comm = "plen", use_parallel=TRUE, raw=FALSE, extra_via_fact=FALSE){
 
   # warnings ----------------------------------------------------------------
 
@@ -619,7 +620,45 @@ get_sessions_details <- function(date_range_from,date_range_to,plen_comm = "plen
                     ,contacttype ) %>%
       dplyr::distinct() -> result
 
-    return(result)
+    if(extra_via_fact == TRUE){
+
+      result  %>%
+        dplyr::select(id_verg,fact_link) %>%
+        dplyr::mutate(id = stringr::str_sub(fact_link,start=-7)) %>%
+        dplyr::mutate(url = stringr::str_sub(fact_link,end=-8)) %>%
+        dplyr::distinct() %>%
+        dplyr::filter(!is.na(url)) -> list
+
+      result_extra <- call_api_multiple_times(iterator=list$id,
+                                              URL = list$url,
+                                              path = NULL,
+                                              query =  list(),
+                                              resultVector = NULL,
+                                              use_parallel=use_parallel)
+
+      result_extra %>%
+        tibble::tibble(result = ., id_fact = names(result)) %>%
+        tidyr::unnest_wider(result,names_sep="_") %>%
+        tidyr::unnest(`result_parlementair-initiatief`,names_sep="_",keep_empty = TRUE) %>%
+        dplyr::select(id_fact,`result_parlementair-initiatief_document`) %>%
+        tidyr::unnest(`result_parlementair-initiatief_document`,names_sep="_",keep_empty = TRUE) %>%
+        dplyr::rename(document=`result_parlementair-initiatief_document_url`) %>%
+        dplyr::filter(!is.na(document)) %>%
+        dplyr::mutate(id = stringr::str_sub(document,start=-7)) %>%
+        dplyr::left_join(list %>% dplyr::select(id_verg,id),by=c("id_fact"="id")) %>%
+        dplyr::select(id_verg,id_fact,url_docs=document ) %>%
+        dplyr::distinct() %>%
+        dplyr::mutate(id_fact = as.numeric(id_fact)) -> docs
+
+      result %>%
+        dplyr::left_join(docs, by=c("id_verg"="id_verg","id_fact"="id_fact")) %>%
+        tidyr::pivot_longer(cols=c("url_docs","link_pdf"),values_to="url") %>%
+        dplyr::select(-name) %>%
+        dplyr::distinct() -> result_joined
+
+    }
+
+    return(result_joined)
 
   }
 
@@ -692,19 +731,71 @@ get_sessions_details <- function(date_range_from,date_range_to,plen_comm = "plen
                     ,id_fact=id) %>%
       dplyr::distinct() -> jln
 
-    # Dit klopt (check met verg_id 1594854), maar onduidelijk waarom er soms missen
-    # mainlist %>%
-    #   tibble::tibble(verg = ., id_verg = names(mainlist)) %>%
-    #   tidyr::unnest_wider(verg) %>%
-    #   select(id_verg,commissieverslag) %>%
-    #   tidyr::unnest_longer(commissieverslag) %>%
-    #   tidyr::unnest(cols=c(commissieverslag )) %>%
-    #   tidyr::unnest(cols = c(initiatief, verslag, hoorzitting_gedachtenwisseling, verzoekschrift),names_sep = "_") %>%
-    #   dplyr::select(id_verg,initiatief_id,verslag_filewebpath) %>%
-    #   dplyr::filter(!is.na(initiatief_id)|is.na(verslag_filewebpath))  -> extra_doc
+    mainlist %>%
+      tibble::tibble(verg = ., id_verg = names(mainlist)) %>%
+      tidyr::unnest_wider(verg) %>%
+      dplyr::select(id_verg,commissieverslag,id) %>%
+      tidyr::unnest_longer(commissieverslag) %>%
+      tidyr::unnest(cols=c(commissieverslag )) %>%
+      tidyr::unnest(cols = c(initiatief, verslag, hoorzitting_gedachtenwisseling),names_sep = "_") %>%
+      dplyr::select(id_verg,initiatief_id,hoorzitting_gedachtenwisseling_id,verslag_filewebpath,verslag_bijlage) %>%
+      tidyr::unnest_wider("verslag_bijlage") %>%
+      tidyr::unnest_longer("url") %>%
+      dplyr::select(id_verg,initiatief_id,hoorzitting_gedachtenwisseling_id,verslag_filewebpath,url) %>%
+      tidyr::pivot_longer(cols=c("verslag_filewebpath","url"),values_to="url") %>%
+      dplyr::select(id_verg,initiatief_id,hoorzitting_gedachtenwisseling_id,url) %>%
+      dplyr::distinct() %>%
+      dplyr::filter(!is.na(url)) %>%
+      tidyr::pivot_longer(cols=c("initiatief_id","hoorzitting_gedachtenwisseling_id"),values_to="id_fact") %>%
+      dplyr::select(id_verg,id_fact,url) %>%
+      na.omit -> verslag
 
     result %>%
-      dplyr::left_join(jln, by=c("id_verg"="id_verg","id_fact"="id_fact")) -> result_joined
+      dplyr::left_join(jln, by=c("id_verg"="id_verg","id_fact"="id_fact")) %>%
+      dplyr::left_join(verslag, by=c("id_verg"="id_verg","id_fact"="id_fact")) %>%
+      tidyr::pivot_longer(cols=c("link_pdf","url"),values_to="url") %>%
+      dplyr::select(-name) %>%
+      dplyr::distinct() -> result_joined
+
+    if(extra_via_fact == TRUE){
+
+      message(crayon::green(cli::symbol$tick,"Getting the extra details by checking the fact endpoints." ))
+
+      result_joined %>%
+        dplyr::select(id_verg,fact_link) %>%
+        dplyr::mutate(id = stringr::str_sub(fact_link,start=-7)) %>%
+        dplyr::mutate(url = stringr::str_sub(fact_link,end=-8)) %>%
+        dplyr::distinct() %>%
+        dplyr::filter(!is.na(url))-> list
+
+      result <- call_api_multiple_times(iterator=list$id,
+                                        URL = list$url,
+                                        path = NULL,
+                                        query =  list(),
+                                        resultVector = NULL,
+                                        use_parallel=use_parallel)
+
+      result %>%
+        tibble::tibble(result = ., id_fact = names(result)) %>%
+        tidyr::unnest_wider(result,names_sep="_") %>%
+        tidyr::unnest(`result_parlementair-initiatief`,names_sep="_",keep_empty = TRUE) %>%
+        dplyr::select(id_fact,`result_parlementair-initiatief_document`) %>%
+        tidyr::unnest(`result_parlementair-initiatief_document`,names_sep="_",keep_empty = TRUE) %>%
+        dplyr::rename(document=`result_parlementair-initiatief_document_url`) %>%
+        dplyr::filter(!is.na(document)) %>%
+        dplyr::mutate(id = stringr::str_sub(document,start=-7)) %>%
+        dplyr::left_join(list %>% dplyr::select(id_verg,id),by=c("id_fact"="id")) %>%
+        dplyr::select(id_verg,id_fact,url_docs=document ) %>%
+        dplyr::distinct() %>%
+        dplyr::mutate(id_fact = as.numeric(id_fact)) -> docs
+
+      result_joined %>%
+        dplyr::left_join(docs, by=c("id_verg"="id_verg","id_fact"="id_fact")) %>%
+        tidyr::pivot_longer(cols=c("url_docs","url"),values_to="url") %>%
+        dplyr::select(-name) %>%
+        dplyr::distinct() -> result_joined
+
+    }
 
   }
 
@@ -783,8 +874,9 @@ get_plen_comm_speech <- function(date_range_from,date_range_to,fact,plen_comm = 
 #' @param plen_comm Switch to pick between plenary (plen) and commission (comm) sessions.
 #' @param use_parallel Boolean: should parallel workers be used to call the API?
 #' @param raw Boolean: should the raw object be returned?
+#' @param extra_via_fact Boolean: also search the underlying endpoint for linked documents? This may return documents not linked to the specific meeting, thus may also include meetings on dates before/after the date range.
 #' @importFrom dplyr %>%
-get_plen_comm_details <- function(date_range_from,date_range_to,fact,plen_comm = "plen",use_parallel=TRUE,raw=FALSE) {
+get_plen_comm_details <- function(date_range_from,date_range_to,fact,plen_comm = "plen",use_parallel=TRUE,raw=FALSE, extra_via_fact=FALSE) {
 
   # date_range_from <- "2021-01-01"
   # date_range_to  <- "2021-02-28"
@@ -802,7 +894,8 @@ get_plen_comm_details <- function(date_range_from,date_range_to,fact,plen_comm =
   session_object <- get_sessions_details(date_range_from=date_range_from
                                          ,date_range_to=date_range_to
                                          ,use_parallel=use_parallel
-                                         ,plen_comm=plen_comm)
+                                         ,plen_comm=plen_comm
+                                         ,extra_via_fact=extra_via_fact)
 
   session_object %>%
     dplyr::left_join(type_conv,by=c("type_activiteit"="type_nl"))%>%
@@ -941,7 +1034,7 @@ get_plen_comm_details <- function(date_range_from,date_range_to,fact,plen_comm =
                     ,result_contacttype
                     ,`result_parlementair-initiatief`
                     ,result_samenhang
-                    ,result_procedureverloop   ) %>%
+                    ,result_procedureverloop ) %>%
       tidyr::hoist(result_contacttype,
                    naam = list("contact", 1, "naam"),
                    voornaam = list("contact", 1, "voornaam"),
@@ -990,8 +1083,9 @@ get_plen_comm_details <- function(date_range_from,date_range_to,fact,plen_comm =
 #' @param plen_comm Switch to pick between plenary (plen) and commission (comm) sessions.
 #' @param use_parallel Boolean: should parallel workers be used to call the API?
 #' @param raw Boolean: should the raw object be returned?
+#' @param extra_via_fact Boolean: also search the underlying endpoint for linked documents? This may return documents not linked to the specific meeting, thus may also include meetings on dates before/after the date range.
 #' @importFrom dplyr %>%
-get_plen_comm_documents <- function(date_range_from,date_range_to,fact,plen_comm= "plen",use_parallel=TRUE,raw=FALSE){
+get_plen_comm_documents <- function(date_range_from,date_range_to,fact,plen_comm= "plen",use_parallel=TRUE,raw=FALSE, extra_via_fact=FALSE){
 
   # Getting the documents in the details of VERG ----------------------------
 
@@ -1008,72 +1102,25 @@ get_plen_comm_documents <- function(date_range_from,date_range_to,fact,plen_comm
   session_object <- get_sessions_details(date_range_from=date_range_from
                                          ,date_range_to=date_range_to
                                          ,use_parallel=use_parallel
-                                         ,plen_comm=plen_comm)
+                                         ,plen_comm=plen_comm
+                                         ,extra_via_fact=extra_via_fact)
 
   session_object %>%
     dplyr::left_join(type_conv,by=c("type_activiteit"="type_nl")) %>%
     dplyr::filter(type_eng%in%fact) %>%
-    dplyr::filter(!is.na(link_pdf)) %>%
-    dplyr::mutate(id = stringr::str_sub(link_pdf,start=-7)) %>%
-    dplyr::select(id_verg,id_fact,id,document= link_pdf ) %>%
+    dplyr::filter(!is.na(url)) %>%
+    dplyr::mutate(id = stringr::str_sub(url,start=-7)) %>%
+    dplyr::select(id_verg,id_fact,id,document= url ) %>%
     dplyr::distinct() -> mainlist
 
   # Getting the documents in the details of FACT ----------------------------
 
-  if(fact %in% c("parliamentary_initiatives","council_hearings")){
-
-    message(crayon::green(cli::symbol$tick,"Getting extra document data." ))
-
-    session_object %>%
-      dplyr::left_join(type_conv,by=c("type_activiteit"="type_nl"))%>%
-      dplyr::filter(type_eng%in%fact)%>%
-      dplyr::select(id_verg,fact_link) %>%
-      dplyr::mutate(id = stringr::str_sub(fact_link,start=-7)) %>%
-      dplyr::mutate(url = stringr::str_sub(fact_link,end=-8)) %>%
-      dplyr::distinct()  -> list
-
-    result <- call_api_multiple_times(iterator=list$id,
-                                      URL = list$url,
-                                      path = NULL,
-                                      query =  list(),
-                                      resultVector = NULL,
-                                      use_parallel=use_parallel)
-
-    result %>%
-      tibble::tibble(result = ., id_fact = names(result)) %>%
-      tidyr::unnest_wider(result,names_sep="_") %>%
-      tidyr::unnest(`result_parlementair-initiatief`,names_sep="_",keep_empty = TRUE) %>%
-      dplyr::select(id_fact,`result_parlementair-initiatief_document`) %>%
-      tidyr::unnest(`result_parlementair-initiatief_document`,names_sep="_",keep_empty = TRUE) %>%
-      dplyr::rename(document=`result_parlementair-initiatief_document_url`) %>%
-      dplyr::filter(!is.na(document)) %>%
-      dplyr::mutate(id = stringr::str_sub(document,start=-7)) %>%
-      dplyr::left_join(list %>% dplyr::select(id_verg,id),by=c("id_fact"="id")) %>%
-      dplyr::select(id_verg,id_fact,id,document ) %>%
-      dplyr::distinct() -> docs
-
-    rbind(mainlist,docs) %>%
-      dplyr::distinct() -> mainlist
-  }
 
   if(length(mainlist$document)==0){
 
     stop("No facts found. Usually this means the type of fact you are looking for did not occur during the specified time or that the specified output is not present.")
 
   }
-
-  # this needs to be done to get the verslag of other facts in council hearings!
-  # result %>%
-  #   tibble::tibble(result = ., id = names(result)) %>%
-  #   tidyr::unnest_wider(result,names_sep="_") %>%
-  #   dplyr::select(result_journaallijn) %>%
-  #   tidyr::unnest_wider(result_journaallijn,names_sep="_")  %>%
-  #   tidyr::unnest_wider( `result_journaallijn_vergadering`,names_sep="_") %>%
-  #   tidyr::unnest_wider(result_journaallijn_vergadering_commissiehandelingen,names_sep="_") %>%
-  #   dplyr::select(result_journaallijn_vergadering_commissiehandelingen_pdffilewebpath) %>%
-  #   filter(!is.na(result_journaallijn_vergadering_commissiehandelingen_pdffilewebpath)) %>%
-  #   distinct
-
 
   # get list of documents ---------------------------------------------------
 
@@ -1098,6 +1145,7 @@ get_plen_comm_documents <- function(date_range_from,date_range_to,fact,plen_comm
 #' @param plen_comm Switch to pick between plenary (plen) and commission (comm) sessions.
 #' @param use_parallel Boolean: should parallel workers be used to call the API?
 #' @param raw Boolean: should the raw object be returned?
+#' @param extra_via_fact Boolean: also search the underlying endpoint for linked documents? This may return documents not linked to the specific meeting, thus may also include meetings on dates before/after the date range.
 #' @export
 #' @importFrom dplyr %>%
 #' @examples
@@ -1111,7 +1159,7 @@ get_plen_comm_documents <- function(date_range_from,date_range_to,fact,plen_comm
 #'              use_parallel=TRUE )
 #'
 #' }
-get_work <- function(date_range_from, date_range_to, fact="debates", type="details",plen_comm="plen",use_parallel=TRUE,raw=FALSE){
+get_work <- function(date_range_from, date_range_to, fact="debates", type="details",plen_comm="plen",use_parallel=TRUE,raw=FALSE, extra_via_fact=FALSE){
 
   # Check input -------------------------------------------------------------
 
@@ -1208,7 +1256,8 @@ get_work <- function(date_range_from, date_range_to, fact="debates", type="detai
                                        ,plen_comm=plen_comm
                                        ,fact=fact
                                        ,use_parallel=use_parallel
-                                       ,raw=raw)
+                                       ,raw=raw
+                                       ,extra_via_fact=extra_via_fact)
 
 
     return(object)
@@ -1222,7 +1271,8 @@ get_work <- function(date_range_from, date_range_to, fact="debates", type="detai
                                         ,plen_comm=plen_comm
                                         ,fact=fact
                                         ,use_parallel=use_parallel
-                                        ,raw=raw)
+                                        ,raw=raw
+                                        ,extra_via_fact=extra_via_fact)
     return(object)
   }
 

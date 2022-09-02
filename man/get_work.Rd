@@ -11,7 +11,8 @@ get_work(
   type = "details",
   plen_comm = "plen",
   use_parallel = TRUE,
-  raw = FALSE
+  raw = FALSE,
+  extra_via_fact = FALSE
 )
 }
 \arguments{
@@ -28,6 +29,8 @@ get_work(
 \item{use_parallel}{Boolean: should parallel workers be used to call the API?}
 
 \item{raw}{Boolean: should the raw object be returned?}
+
+\item{extra_via_fact}{Boolean: also search the underlying endpoint for linked documents? This may return documents not linked to the specific meeting, thus may also include meetings on dates before/after the date range.}
 }
 \description{
 Get data from the Flemish parliament
