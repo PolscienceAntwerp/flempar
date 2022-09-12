@@ -576,6 +576,7 @@ get_sessions_details <- function(date_range_from,date_range_to,plen_comm = "plen
 
   }
 
+
   # transform data ----------------------------------------------------------
   if(plen_comm=="plen"){
 
@@ -619,6 +620,12 @@ get_sessions_details <- function(date_range_from,date_range_to,plen_comm = "plen
                     ,link_pdf=filewebpath
                     ,contacttype ) %>%
       dplyr::distinct() -> result
+
+    if(extra_via_fact == FALSE ){
+
+      result_joined <- result
+
+    }
 
     if(extra_via_fact == TRUE){
 
@@ -756,6 +763,8 @@ get_sessions_details <- function(date_range_from,date_range_to,plen_comm = "plen
       tidyr::pivot_longer(cols=c("link_pdf","url"),values_to="url") %>%
       dplyr::select(-name) %>%
       dplyr::distinct() -> result_joined
+
+
 
     if(extra_via_fact == TRUE){
 
