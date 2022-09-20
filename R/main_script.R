@@ -251,35 +251,40 @@ use_generalized_query <- function(date_range_from,date_range_to, type = "Schrift
 
   }
 
-  date_range_from_conv <- lubridate::ymd(date_range_from) %>% format('%d%m%Y')
-  date_range_to_conv <- lubridate::ymd(date_range_to) %>% format('%d%m%Y')
+  # date_range_from_conv <- lubridate::ymd(date_range_from) %>% format('%d%m%Y')
+  # date_range_to_conv <- lubridate::ymd(date_range_to) %>% format('%d%m%Y')
 
-
-  robj <- call_api_once(URL="https://ws.vlpar.be/e/opendata/zj/alle"
-                        ,path=paste0("")
-                        ,query=list())
-
-  tibble::tibble(robj$items) %>%
-    tidyr::unnest(cols = c(zittingsjaar),keep_empty = TRUE) %>%
-    dplyr::mutate(eind = lubridate::ymd_hms(`eind-zittingsjaar` )) %>%
-    dplyr::mutate(begin = lubridate::ymd_hms(`start-zittingsjaar` )) %>%
-    dplyr::select(begin,eind,zittingsjaar=naam,id) -> time
-
-  time %>%
-    dplyr::filter(eind >= lubridate::date(date_range_from) & begin <= lubridate::date(date_range_to) ) -> zittingsjaar
+  # robj <- call_api_once(URL="https://ws.vlpar.be/e/opendata/zj/alle"
+  #                       ,path=paste0("")
+  #                       ,query=list())
+  #
+  # tibble::tibble(robj$items) %>%
+  #   tidyr::unnest(cols = c(zittingsjaar),keep_empty = TRUE) %>%
+  #   dplyr::mutate(eind = lubridate::ymd_hms(`eind-zittingsjaar` )) %>%
+  #   dplyr::mutate(begin = lubridate::ymd_hms(`start-zittingsjaar` )) %>%
+  #   dplyr::select(begin,eind,zittingsjaar=naam,id) -> time
+  #
+  # time %>%
+  #   dplyr::filter(eind >= lubridate::date(date_range_from) & begin <= lubridate::date(date_range_to) ) -> zittingsjaar
 
   type <- gsub(" ","%20",type)
 
   list <- vector("list",length=length(type))
-  for(h in seq_along(1:length(type))){
+  for(i in seq_along(1:length(type))){
 
-    list[[h]] <- vector("list",length=length(zittingsjaar$zittingsjaar))
+   # list[[h]] <- vector("list",length=length(zittingsjaar$zittingsjaar))
 
-    for(i in seq_along(1:length(zittingsjaar$zittingsjaar))){
+   # for(i in seq_along(1:length(zittingsjaar$zittingsjaar))){
+
+      # robj <- call_api_once(URL="https://ws.vlpar.be/api/search/query"
+      #                       ,path=paste0("inmeta:zittingsjaar=",zittingsjaar$zittingsjaar[[i]],"&requiredfields=aggregaattype:",type[[h]])
+      #                       ,query=list(page=1,max=100,sort="date"))
 
       robj <- call_api_once(URL="https://ws.vlpar.be/api/search/query"
-                            ,path=paste0("inmeta:zittingsjaar=",zittingsjaar$zittingsjaar[[i]],"&requiredfields=aggregaattype:",type[[h]])
+                            ,path=paste0("inmeta:publicatiedatum:daterange:",date_range_from,"..",date_range_to,"&requiredfields=aggregaattype:",type[[i]])
                             ,query=list(page=1,max=100,sort="date"))
+
+      #inmeta:publicatiedatum:daterange:2022-01-01..2022-03-01
 
       as.numeric(robj$count)
 
@@ -291,25 +296,24 @@ use_generalized_query <- function(date_range_from,date_range_to, type = "Schrift
 
       count_pages <- ceiling(as.numeric(robj$count)/100)
 
-      list[[h]][[i]] <- vector(mode="list",length= count_pages)
+      list[[i]] <- vector(mode="list",length= count_pages)
 
-      for(j in seq_along(1:count_pages)){
+      for(h in seq_along(1:count_pages)){
 
         robj <- call_api_once(URL="https://ws.vlpar.be/api/search/query"
-                              ,path=paste0("inmeta:zittingsjaar=",zittingsjaar$zittingsjaar[[i]],"&requiredfields=aggregaattype:",type[[h]])
-                              ,query=list(page=j,max=100,sort="date"))
+                              ,path=paste0("inmeta:publicatiedatum:daterange:",date_range_from,"..",date_range_to,"&requiredfields=aggregaattype:",type[[i]])
+                              ,query=list(page=h,max=100,sort="date"))
 
-        list[[h]][[i]][[j]] <- robj$result
+        list[[i]][[h]] <- robj$result
 
         # message(c(type[[h]]," ",zittingsjaar$zittingsjaar[[i]]," Page:",j))
       }
 
-    }
+    #}
 
   }
 
   tibble::tibble(list = list) %>%
-    tidyr::unnest(list,keep_empty = TRUE) %>%
     tidyr::unnest(list,keep_empty = TRUE) %>%
     tidyr::unnest(list,keep_empty = TRUE) %>%
     tidyr::unnest(metatags,keep_empty = TRUE)  %>%
@@ -318,7 +322,7 @@ use_generalized_query <- function(date_range_from,date_range_to, type = "Schrift
     dplyr::filter(name %in% c("publicatiedatum","opendata","document","aggregaattype")) %>%
     tidyr::pivot_wider(names_from = name,values_from = value) %>%
     dplyr::mutate(publicatiedatum = lubridate::date(publicatiedatum)) %>%
-    dplyr::filter(publicatiedatum >= date_range_from & publicatiedatum <=date_range_to ) %>%
+    #dplyr::filter(publicatiedatum >= date_range_from & publicatiedatum <=date_range_to ) %>%
     dplyr::mutate(id_fact = stringr::str_sub(opendata,start=-7)) %>%
     dplyr::mutate(url = stringr::str_sub(opendata,end=-8)) %>%
     dplyr::select(-id,-index,-rank,-snippet)%>%
@@ -1478,7 +1482,7 @@ get_mp <- function(selection="current",fact="bio", date_at=NULL, use_parallel=TR
       tidyr::unnest_wider(vv) %>%
       dplyr::select(id_mp=id,voornaam, achternaam=naam,geslacht,geboortedatum,geboorteplaats,gsmnr,email,website,huidigefractie) %>%
       tidyr::unnest_wider(huidigefractie) %>%
-      dplyr::select(id_mp,voornaam, achternaam=naam,geslacht,geboortedatum,geboorteplaats,gsmnr,email,website,party_id=id,party_naam = naam) %>%
+      dplyr::select(id_mp,voornaam, achternaam,geslacht,geboortedatum,geboorteplaats,gsmnr,email,website,party_id=id,party_naam = naam) %>%
       dplyr::mutate(geboortedatum = lubridate::date(lubridate::ymd_hms(geboortedatum))) %>%
       tidyr::unnest_wider(email ,names_sep="_")  %>%
       tidyr::unnest(website ,names_sep="_",keep_empty =TRUE) %>%
