@@ -458,7 +458,8 @@ get_written_questions_documents <- function(date_range_from,date_range_to,use_pa
   list <- parse_documents(mainlist=mainlist,use_parallel=use_parallel)
 
   tibble::tibble(list=list ) %>%
-    tidyr::unnest(list,keep_empty = TRUE) -> result
+    tidyr::unnest(list,keep_empty = TRUE) %>%
+    dplyr::mutate(id_fact = gsub("/","",id_fact)) -> result
 
   return(result)
 
@@ -478,6 +479,9 @@ get_written_questions_details <- function(date_range_from,date_range_to,use_para
   list <- use_generalized_query(date_range_from=date_range_from,date_range_to=date_range_to)
 
   message(crayon::green(cli::symbol$tick,"Getting the details on the written questions." ))
+
+   list %>%
+     dplyr::mutate(id_fact = gsub("/","",id_fact)) -> list
 
   result <- call_api_multiple_times(iterator=list$id_fact,
                                     URL = list$url,
@@ -663,7 +667,7 @@ get_sessions_details <- function(date_range_from,date_range_to,plen_comm = "plen
 
       result %>%
         dplyr::left_join(docs, by=c("id_verg"="id_verg","id_fact"="id_fact")) %>%
-        tidyr::pivot_longer(cols=c("url_docs","link_pdf"),values_to="url") %>%
+        tidyr::pivot_longer(cols=c("url_docs","link_pdf"),values_to="link_pdf") %>%
         dplyr::select(-name) %>%
         dplyr::distinct() -> result_joined
 
@@ -764,7 +768,7 @@ get_sessions_details <- function(date_range_from,date_range_to,plen_comm = "plen
     result %>%
       dplyr::left_join(jln, by=c("id_verg"="id_verg","id_fact"="id_fact")) %>%
       dplyr::left_join(verslag, by=c("id_verg"="id_verg","id_fact"="id_fact")) %>%
-      tidyr::pivot_longer(cols=c("link_pdf","url"),values_to="url") %>%
+      tidyr::pivot_longer(cols=c("link_pdf","url"),values_to="link_pdf") %>%
       dplyr::select(-name) %>%
       dplyr::distinct() -> result_joined
 
@@ -804,7 +808,7 @@ get_sessions_details <- function(date_range_from,date_range_to,plen_comm = "plen
 
       result_joined %>%
         dplyr::left_join(docs, by=c("id_verg"="id_verg","id_fact"="id_fact")) %>%
-        tidyr::pivot_longer(cols=c("url_docs","url"),values_to="url") %>%
+        tidyr::pivot_longer(cols=c("url_docs","link_pdf"),values_to="link_pdf") %>%
         dplyr::select(-name) %>%
         dplyr::distinct() -> result_joined
 
@@ -1121,9 +1125,9 @@ get_plen_comm_documents <- function(date_range_from,date_range_to,fact,plen_comm
   session_object %>%
     dplyr::left_join(type_conv,by=c("type_activiteit"="type_nl")) %>%
     dplyr::filter(type_eng%in%fact) %>%
-    dplyr::filter(!is.na(url)) %>%
-    dplyr::mutate(id = stringr::str_sub(url,start=-7)) %>%
-    dplyr::select(id_verg,id_fact,id,document= url ) %>%
+    dplyr::filter(!is.na(link_pdf)) %>%
+    dplyr::mutate(id = stringr::str_sub(link_pdf,start=-7)) %>%
+    dplyr::select(id_verg,id_fact,id,document= link_pdf ) %>%
     dplyr::distinct() -> mainlist
 
   # Getting the documents in the details of FACT ----------------------------
