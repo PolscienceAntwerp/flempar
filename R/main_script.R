@@ -105,7 +105,7 @@ call_api_multiple_times <- function(iterator, URL, path, query, resultVector,use
 
     })#endtiming
 
-    message(crayon::green(cli::symbol$tick,"Made",length(iterator),"calls in ", round(time_used[[3]],1), "seconds."))
+    message(crayon::green(cli::symbol$tick,"Made",length(iterator),"calls in", round(time_used[[3]],1), "seconds."))
 
     names(list) <- iterator
 
@@ -251,46 +251,18 @@ use_generalized_query <- function(date_range_from,date_range_to, type = "Schrift
 
   }
 
-  # date_range_from_conv <- lubridate::ymd(date_range_from) %>% format('%d%m%Y')
-  # date_range_to_conv <- lubridate::ymd(date_range_to) %>% format('%d%m%Y')
-
-  # robj <- call_api_once(URL="https://ws.vlpar.be/e/opendata/zj/alle"
-  #                       ,path=paste0("")
-  #                       ,query=list())
-  #
-  # tibble::tibble(robj$items) %>%
-  #   tidyr::unnest(cols = c(zittingsjaar),keep_empty = TRUE) %>%
-  #   dplyr::mutate(eind = lubridate::ymd_hms(`eind-zittingsjaar` )) %>%
-  #   dplyr::mutate(begin = lubridate::ymd_hms(`start-zittingsjaar` )) %>%
-  #   dplyr::select(begin,eind,zittingsjaar=naam,id) -> time
-  #
-  # time %>%
-  #   dplyr::filter(eind >= lubridate::date(date_range_from) & begin <= lubridate::date(date_range_to) ) -> zittingsjaar
-
   type <- gsub(" ","%20",type)
 
   list <- vector("list",length=length(type))
   for(i in seq_along(1:length(type))){
 
-   # list[[h]] <- vector("list",length=length(zittingsjaar$zittingsjaar))
-
-   # for(i in seq_along(1:length(zittingsjaar$zittingsjaar))){
-
-      # robj <- call_api_once(URL="https://ws.vlpar.be/api/search/query"
-      #                       ,path=paste0("inmeta:zittingsjaar=",zittingsjaar$zittingsjaar[[i]],"&requiredfields=aggregaattype:",type[[h]])
-      #                       ,query=list(page=1,max=100,sort="date"))
-
       robj <- call_api_once(URL="https://ws.vlpar.be/api/search/query"
                             ,path=paste0("inmeta:publicatiedatum:daterange:",date_range_from,"..",date_range_to,"&requiredfields=aggregaattype:",type[[i]])
                             ,query=list(page=1,max=100,sort="date"))
 
-      #inmeta:publicatiedatum:daterange:2022-01-01..2022-03-01
-
-      as.numeric(robj$count)
-
       if(as.numeric(robj$count) >= 10000){ #error als je over het aantal items gaat! (max 10000)
 
-        stop("Item count is above 10000: ",robj$count," the api is limited to 10 000 search results. ")
+        stop("Item count is above 10000: ",robj$count," the api is limited to 10 000 search results. Please reduce the date range. ")
 
       }
 
@@ -306,10 +278,8 @@ use_generalized_query <- function(date_range_from,date_range_to, type = "Schrift
 
         list[[i]][[h]] <- robj$result
 
-        # message(c(type[[h]]," ",zittingsjaar$zittingsjaar[[i]]," Page:",j))
       }
 
-    #}
 
   }
 
@@ -322,7 +292,6 @@ use_generalized_query <- function(date_range_from,date_range_to, type = "Schrift
     dplyr::filter(name %in% c("publicatiedatum","opendata","document","aggregaattype")) %>%
     tidyr::pivot_wider(names_from = name,values_from = value) %>%
     dplyr::mutate(publicatiedatum = lubridate::date(publicatiedatum)) %>%
-    #dplyr::filter(publicatiedatum >= date_range_from & publicatiedatum <=date_range_to ) %>%
     dplyr::mutate(id_fact = stringr::str_sub(opendata,start=-7)) %>%
     dplyr::mutate(url = stringr::str_sub(opendata,end=-8)) %>%
     dplyr::select(-id,-index,-rank,-snippet)%>%
@@ -351,8 +320,6 @@ parse_documents <- function(mainlist,use_parallel=TRUE){
       stop("You only have one core, dividing the work over cores is not possible. Please set 'use_parallel=FALSE'. ")
 
     }
-
-   # message(crayon::green(cli::symbol$tick,"Dividing the calls between", parallel::detectCores() - 1, "workers."))
 
     cl <- parallel::makeCluster(parallel::detectCores() - 1)
     doParallel::registerDoParallel(cl)
@@ -567,7 +534,7 @@ get_sessions_details <- function(date_range_from,date_range_to,plen_comm = "plen
     stop("No sessions found between ",date_range_from," and ",date_range_to,".")
   }
 
-  message(crayon::green(cli::symbol$tick,"Found", length(iterator), "sessions between",date_range_from, "and",date_range_to,"." ))
+  message(crayon::green(cli::symbol$tick,"Found", length(iterator), "sessions between",date_range_from, "and",paste0(date_range_to,".") ))
 
   message(crayon::green(cli::symbol$tick,"Getting the session details." ))
 
@@ -772,8 +739,6 @@ get_sessions_details <- function(date_range_from,date_range_to,plen_comm = "plen
       dplyr::select(-name) %>%
       dplyr::distinct() -> result_joined
 
-
-
     if(extra_via_fact == TRUE){
 
       message(crayon::green(cli::symbol$tick,"Getting the extra details by checking the fact endpoints." ))
@@ -825,7 +790,7 @@ get_sessions_details <- function(date_range_from,date_range_to,plen_comm = "plen
 #' @param date_range_from The start date, should be in format "yyyy-mm-dd".
 #' @param date_range_to The end date, should be in format "yyyy-mm-dd".
 #' @param fact The fact to search.
-#' @param plen_comm Switch to pick between plenary (plen) and commission (comm) sessions.
+#' @param plen_comm Switch between plenary (plen) and commission (comm) sessions.
 #' @param use_parallel Boolean: should parallel workers be used to call the API?
 #' @param raw Boolean: should the raw object be returned?
 #' @importFrom dplyr %>%
@@ -894,9 +859,6 @@ get_plen_comm_speech <- function(date_range_from,date_range_to,fact,plen_comm = 
 #' @param extra_via_fact Boolean: also search the underlying endpoint for linked documents? This may return documents not linked to the specific meeting, thus may also include meetings on dates before/after the date range.
 #' @importFrom dplyr %>%
 get_plen_comm_details <- function(date_range_from,date_range_to,fact,plen_comm = "plen",use_parallel=TRUE,raw=FALSE, extra_via_fact=FALSE) {
-
-  # date_range_from <- "2021-01-01"
-  # date_range_to  <- "2021-02-28"
 
   tibble::tribble(
     ~type_nl,                      ~type_eng,
@@ -1296,7 +1258,6 @@ get_work <- function(date_range_from, date_range_to, fact="debates", type="detai
 
 }
 
-
 #' Filter texts fields on certain search terms
 #'
 #' @param df Data frame
@@ -1341,12 +1302,11 @@ search_terms <- function(df,text_field,search_terms=NULL){
 
 }
 
-
 #' Search all the MPs serving, or who served the Flemish parliament
 #'
-#' @param selection select either "current", at a certain date ("date") or "former"
-#' @param date_at When selecting "date" in selection, provide date, should be in format "yyyy-mm-dd".
-#' @param fact Options of facts to return are 'raw', 'bio', 'education', 'career','political_info', 'presences_commissions' or 'presences_plenary'
+#' @param selection Select either "current", at a certain date "date" or "former".
+#' @param date_at When selecting "date" in selection, provide the date, using the following format "yyyy-mm-dd".
+#' @param fact Options of facts to return are 'raw', 'bio', 'education', 'career','political_info', 'presences_commissions' or 'presences_plenary'.
 #' @param use_parallel Boolean: should parallel workers be used to call the API?
 #' @export
 #'
@@ -1517,11 +1477,11 @@ get_mp <- function(selection="current",fact="bio", date_at=NULL, use_parallel=TR
       tibble::tibble(vv = .) %>%
       tidyr::unnest_wider(vv) %>%
       guarantee_field(c("beroep")) %>%
-      dplyr::select(id_mp=id,voornaam,naam, beroep) %>%
+      dplyr::select(id_mp=id, voornaam, naam, beroep) %>%
       tidyr::unnest(beroep,keep_empty = TRUE) %>%
       guarantee_field(c("datumvanformaat","datumtotformaat")) %>%
       dplyr::select(-datumtotformaat,-datumvanformaat) %>%
-      dplyr::select(id,voornaam,naam,datumvan,datumtot,titel,werkgever)-> result
+      dplyr::select(id_mp,voornaam,naam,datumvan,datumtot,titel,werkgever) -> result
 
     return(result)
 
