@@ -289,7 +289,7 @@ use_generalized_query <- function(date_range_from,date_range_to, type = "Schrift
     tidyr::unnest(metatags,keep_empty = TRUE)  %>%
     tidyr::unnest(metatag,keep_empty = TRUE)  %>%
     dplyr::distinct() %>%
-    dplyr::filter(name %in% c("publicatiedatum","opendata","document","aggregaattype")) %>%
+    dplyr::filter(name %in% c("publicatiedatum","opendata","document","aggregaattype","mimetype")) %>%
     tidyr::pivot_wider(names_from = name,values_from = value) %>%
     dplyr::mutate(publicatiedatum = lubridate::date(publicatiedatum)) %>%
     dplyr::mutate(id_fact = stringr::str_sub(opendata,start=-7)) %>%
@@ -328,23 +328,66 @@ parse_documents <- function(mainlist,use_parallel=TRUE){
     time_used <- system.time({
 
       list <- foreach::foreach(i = seq_along(1:length(mainlist$document)),
-                               .packages=c("dplyr","purrr","httr","jsonlite","pdftools","stringr"),
-                               .errorhandling="remove") %dopar% {
+                               .packages=c("dplyr","purrr","httr","jsonlite","pdftools","stringr","textreadr"),
+                               .errorhandling = c("remove")) %dopar% {
 
-                                 pdftools::pdf_text(mainlist$document[[i]]) %>%
-                                   paste(sep = " ") %>%
-                                   stringr::str_replace_all( stringr::fixed("\n"), " ") %>%
-                                   stringr::str_replace_all( stringr::fixed("\r"), " ") %>%
-                                   stringr::str_replace_all( stringr::fixed("\t"), " ") %>%
-                                   stringr::str_replace_all( stringr::fixed("\""), " ") %>%
-                                   paste(sep = " ", collapse = " ") %>%
-                                   stringr::str_squish() %>%
-                                   stringr::str_replace_all("- ", "") -> text
+                                if(mainlist$mimetype[i]=="application/msword"){
 
-                                 cbind(
-                                   mainlist[i,]
-                                   ,data.frame(text = text)
-                                 )
+                                  # doc <- "G:/.shortcut-targets-by-id/1leJH8QJ2J1nt86RB290lNIseD8eHonDV/Datamarinier/UA/Flempar/flempar/1580372.93759125.doc"
+                                  doc <- textreadr::download(
+                                    mainlist$document[[i]],
+                                    file.out =  paste0(abs(runif(1, min=1, max=5000000)),".doc"),
+                                    loc=getwd()
+                                  )
+
+                                  textreadr::read_doc(file=doc) %>%
+                                    paste(sep = " ", collapse = " ") %>%
+                                    stringr::str_squish() -> text
+
+                                  unlink(doc)
+
+                                  cbind(
+                                    mainlist[i,]
+                                    ,data.frame(text = text)
+                                  )
+
+                                }
+                                 else if(mainlist$mimetype[i]=="application/pdf"){
+
+
+                                   pdftools::pdf_text(mainlist$document[[i]]) %>%
+                                     paste(sep = " ") %>%
+                                     stringr::str_replace_all( stringr::fixed("\n"), " ") %>%
+                                     stringr::str_replace_all( stringr::fixed("\r"), " ") %>%
+                                     stringr::str_replace_all( stringr::fixed("\t"), " ") %>%
+                                     stringr::str_replace_all( stringr::fixed("\""), " ") %>%
+                                     paste(sep = " ", collapse = " ") %>%
+                                     stringr::str_squish() %>%
+                                     stringr::str_replace_all("- ", "") -> text
+
+                                   cbind(
+                                     mainlist[i,]
+                                     ,data.frame(text = text)
+                                   )}
+                                 else if (mainlist$mimetype[i]=="application/vnd.openxmlformats-officedocument.wordprocessingml.document"){
+
+                                   doc <- textreadr::download(
+                                     mainlist$document[[i]],
+                                     file.out =  paste0(abs(runif(1, min=1, max=5000000)),".docx"),
+                                     loc=getwd()
+                                   )
+
+                                   textreadr::read_document(file=doc) %>%
+                                     paste(sep = " ", collapse = " ") %>%
+                                     stringr::str_squish() -> text
+
+                                   unlink(doc)
+
+                                   cbind(
+                                     mainlist[i,]
+                                     ,data.frame(text = text)
+                                   )
+                                }
 
                                }#endparallel
 
@@ -365,20 +408,64 @@ parse_documents <- function(mainlist,use_parallel=TRUE){
 
         tryCatch({
 
-          pdftools::pdf_text(mainlist$document[[i]]) %>%
-            paste(sep = " ") %>%
-            stringr::str_replace_all( stringr::fixed("\n"), " ") %>%
-            stringr::str_replace_all( stringr::fixed("\r"), " ") %>%
-            stringr::str_replace_all( stringr::fixed("\t"), " ") %>%
-            stringr::str_replace_all( stringr::fixed("\""), " ") %>%
-            paste(sep = " ", collapse = " ") %>%
-            stringr::str_squish() %>%
-            stringr::str_replace_all("- ", "") -> text
+          if(mainlist$mimetype[i]=="application/msword"){
 
-          cbind(
-            mainlist[i,]
-            ,data.frame(text = text)
-          ) -> list[[i]]},
+            doc <- textreadr::download(
+              mainlist$document[[i]],
+              file.out =  paste0(abs(runif(1, min=1, max=5000000)),".doc"),
+              loc=tempdir()
+            )
+
+            textreadr::read_doc(file=doc) %>%
+              paste(sep = " ", collapse = " ") %>%
+              stringr::str_squish() -> text
+
+            unlink(doc)
+
+            cbind(
+              mainlist[i,]
+              ,data.frame(text = text)
+            )
+
+          }
+          else if(mainlist$mimetype[i]=="application/pdf"){
+
+            pdftools::pdf_text(mainlist$document[[i]]) %>%
+              paste(sep = " ") %>%
+              stringr::str_replace_all( stringr::fixed("\n"), " ") %>%
+              stringr::str_replace_all( stringr::fixed("\r"), " ") %>%
+              stringr::str_replace_all( stringr::fixed("\t"), " ") %>%
+              stringr::str_replace_all( stringr::fixed("\""), " ") %>%
+              paste(sep = " ", collapse = " ") %>%
+              stringr::str_squish() %>%
+              stringr::str_replace_all("- ", "") -> text
+
+            cbind(
+              mainlist[i,]
+              ,data.frame(text = text)
+            )}
+          else if (mainlist$mimetype[i]=="application/vnd.openxmlformats-officedocument.wordprocessingml.document"){
+
+            doc <- textreadr::download(
+              mainlist$document[[i]],
+              file.out =  paste0(abs(runif(1, min=1, max=5000000)),".docx"),
+              loc=tempdir()
+            )
+
+            textreadr::read_document(file=doc) %>%
+              paste(sep = " ", collapse = " ") %>%
+              stringr::str_squish() -> text
+
+            unlink(doc)
+
+            cbind(
+              mainlist[i,]
+              ,data.frame(text = text)
+            )
+          }
+          }
+
+          ,
 
           error=function(e){
 
@@ -390,6 +477,7 @@ parse_documents <- function(mainlist,use_parallel=TRUE){
             skip_to_next <<- TRUE
           }
         )
+
         if(skip_to_next) { next }
 
         #message(i," ",mainlist$aggregaattype[[i]])
