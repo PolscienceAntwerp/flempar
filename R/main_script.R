@@ -354,7 +354,6 @@ parse_documents <- function(mainlist,use_parallel=TRUE){
                                 }
                                  else if(mainlist$mimetype[i]=="application/pdf"){
 
-
                                    pdftools::pdf_text(mainlist$document[[i]]) %>%
                                      paste(sep = " ") %>%
                                      stringr::str_replace_all( stringr::fixed("\n"), " ") %>%
@@ -667,7 +666,7 @@ get_sessions_details <- function(date_range_from,date_range_to,plen_comm = "plen
                                    ,verzoekschrift) , names_to = "type_activiteit", values_to = "value") %>%
       tidyr::unnest_wider(value,names_repair = "unique") %>%
       dplyr::filter(!is.na(id)) %>%
-      tidyr::unnest(cols = c(id,contacttype, link, objecttype, onderwerp, titel,filewebpath, zittingsjaar),names_sep="_",keep_empty = TRUE) %>%
+      tidyr::unnest(cols = c(id,contacttype, link, objecttype, onderwerp, titel,filewebpath, zittingsjaar),names_sep="_",keep_empty = TRUE)  %>%
       tidyr::unnest_wider(link,names_sep="_") %>%
       dplyr::select(id_verg
                     ,datumbegin
@@ -1177,7 +1176,8 @@ get_plen_comm_documents <- function(date_range_from,date_range_to,fact,plen_comm
     dplyr::filter(type_eng%in%fact) %>%
     dplyr::filter(!is.na(link_pdf)) %>%
     dplyr::mutate(id = stringr::str_sub(link_pdf,start=-7)) %>%
-    dplyr::select(id_verg,id_fact,id,document= link_pdf ) %>%
+    dplyr::mutate(mimetype = "application/pdf") %>%
+    dplyr::select(id_verg,id_fact,id,document= link_pdf,mimetype ) %>%
     dplyr::distinct() -> mainlist
 
   # Getting the documents in the details of FACT ----------------------------
