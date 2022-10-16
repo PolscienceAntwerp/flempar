@@ -16,6 +16,7 @@ Imports:
     aweek,
     cli,
     crayon,
+    doconv,
     doParallel,
     dplyr,
     foreach,
@@ -25,6 +26,7 @@ Imports:
     pdftools,
     purrr,
     stringr,
+    textreadr,
     tibble,
     tidyr (>= 1.2.0),
     xml2

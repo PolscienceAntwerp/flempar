@@ -292,8 +292,8 @@ use_generalized_query <- function(date_range_from,date_range_to, type = "Schrift
     dplyr::filter(name %in% c("publicatiedatum","opendata","document","aggregaattype","mimetype")) %>%
     tidyr::pivot_wider(names_from = name,values_from = value) %>%
     dplyr::mutate(publicatiedatum = lubridate::date(publicatiedatum)) %>%
-    dplyr::mutate(id_fact = stringr::str_sub(opendata,start=-7)) %>%
-    dplyr::mutate(url = stringr::str_sub(opendata,end=-8)) %>%
+    dplyr::mutate(id_fact = stringr::str_extract(opendata,"[0-9]+")) %>%
+    dplyr::mutate(url = stringr::str_extract(opendata,"[^0-9]+")) %>%
     dplyr::select(-id,-index,-rank,-snippet)%>%
     dplyr::select(id_fact, dplyr::everything()) -> mainlist
 
@@ -324,25 +324,31 @@ parse_documents <- function(mainlist,use_parallel=TRUE){
     cl <- parallel::makeCluster(parallel::detectCores() - 1)
     doParallel::registerDoParallel(cl)
     on.exit(parallel::stopCluster(cl))
-
+    unlink("tempfilefolder", recursive=TRUE)
+    dir.create("tempfilefolder")
     time_used <- system.time({
 
       list <- foreach::foreach(i = seq_along(1:length(mainlist$document)),
-                               .packages=c("dplyr","purrr","httr","jsonlite","pdftools","stringr","textreadr"),
+                               .packages=c("dplyr","purrr","httr","jsonlite","pdftools","stringr","textreadr","doconv"),
                                .errorhandling = c("remove")) %dopar% {
 
-                                if(mainlist$mimetype[i]=="application/msword"){
+                                 if("mimetype"%in%names(mainlist)){
+                                   type <- mainlist$mimetype[i]
+                                 }else{
+                                   type <-  httr::GET(mainlist$document[[i]])$headers$`content-type`
+                                 }
 
-                                  # doc <- "G:/.shortcut-targets-by-id/1leJH8QJ2J1nt86RB290lNIseD8eHonDV/Datamarinier/UA/Flempar/flempar/1580372.93759125.doc"
+                                if(type=="application/msword"){
+
                                   doc <- textreadr::download(
                                     mainlist$document[[i]],
-                                    file.out =  paste0(abs(runif(1, min=1, max=5000000)),".doc"),
+                                    file.out =  paste0("tempfilefolder/",i,".doc"),
                                     loc=getwd()
                                   )
 
                                   textreadr::read_doc(file=doc) %>%
-                                    paste(sep = " ", collapse = " ") %>%
-                                    stringr::str_squish() -> text
+                                      paste(sep = " ", collapse = " ") %>%
+                                      stringr::str_squish() -> text
 
                                   unlink(doc)
 
@@ -352,7 +358,7 @@ parse_documents <- function(mainlist,use_parallel=TRUE){
                                   )
 
                                 }
-                                 else if(mainlist$mimetype[i]=="application/pdf"){
+                                 else if(type=="application/pdf"){
 
                                    pdftools::pdf_text(mainlist$document[[i]]) %>%
                                      paste(sep = " ") %>%
@@ -368,11 +374,11 @@ parse_documents <- function(mainlist,use_parallel=TRUE){
                                      mainlist[i,]
                                      ,data.frame(text = text)
                                    )}
-                                 else if (mainlist$mimetype[i]=="application/vnd.openxmlformats-officedocument.wordprocessingml.document"){
+                                 else if (type%in%c("application/rtf")){
 
                                    doc <- textreadr::download(
                                      mainlist$document[[i]],
-                                     file.out =  paste0(abs(runif(1, min=1, max=5000000)),".docx"),
+                                     file.out =  paste0(i,".rtf"),
                                      loc=getwd()
                                    )
 
@@ -386,9 +392,68 @@ parse_documents <- function(mainlist,use_parallel=TRUE){
                                      mainlist[i,]
                                      ,data.frame(text = text)
                                    )
-                                }
+
+                                   }
+                                 else if (type%in%c("application/vnd.openxmlformats-officedocument.wordprocessingml.document","binary/octet-stream","application/octet-stream")){
+
+                                   doc <- textreadr::download(
+                                     mainlist$document[[i]],
+                                     file.out =  paste0(i,".docx"),
+                                     loc=getwd()
+                                   )
+
+                                   textreadr::read_document(file=doc) %>%
+                                     paste(sep = " ", collapse = " ") %>%
+                                     stringr::str_squish() -> text
+
+                                   unlink(doc)
+
+                                   cbind(
+                                     mainlist[i,]
+                                     ,data.frame(text = text)
+                                   )
+                                 }
+
 
                                }#endparallel
+
+      tibble::tibble(files=list.files("tempfilefolder"))%>%
+        dplyr::mutate(docfiles=stringr::str_detect(files,".doc")) %>%
+        dplyr::filter(docfiles==TRUE) %>%
+        dplyr::mutate(index = stringr::str_extract(files,"[0-9]+"))  -> files
+
+      if(!nrow(files)==0){
+
+        list_recov <- vector(mode="list",length= length(files$files))
+        for(i in seq_along(1:length(files$files))){
+
+          name <- doconv::to_pdf(input = paste0("tempfilefolder/",files$files[[i]]),timeout =12000)
+
+          pdftools::pdf_text(name) %>%
+            paste(sep = " ") %>%
+            stringr::str_replace_all( stringr::fixed("\n"), " ") %>%
+            stringr::str_replace_all( stringr::fixed("\r"), " ") %>%
+            stringr::str_replace_all( stringr::fixed("\t"), " ") %>%
+            stringr::str_replace_all( stringr::fixed("\""), " ") %>%
+            paste(sep = " ", collapse = " ") %>%
+            stringr::str_squish() %>%
+            stringr::str_replace_all("- ", "") -> text
+
+          cbind(
+            mainlist[files$index[[i]],]
+            ,data.frame(text = text)
+          ) -> list_recov[[i]]
+
+
+
+          unlink(name)
+          unlink(paste0("tempfilefolder/",files$files[[i]]))
+
+        }
+
+        list <-  append(list,list_recov )
+      }#end recovery corrupted files
+
 
     })#endtiming
 
@@ -399,35 +464,69 @@ parse_documents <- function(mainlist,use_parallel=TRUE){
 
     time_used <- system.time({
 
+      unlink("tempfilefolder", recursive=TRUE)
+      dir.create("tempfilefolder")
       list <- vector(mode="list",length= length(mainlist$document))
-
       for(i in seq_along(1:length(mainlist$document))){
 
-        skip_to_next <- FALSE
+      tryCatch({
 
-        tryCatch({
+          if("mimetype"%in%names(mainlist)){
+            type <- mainlist$mimetype[i]
+          }else{
+            type <-  httr::GET(mainlist$document[[i]])$headers$`content-type`
+          }
 
-          if(mainlist$mimetype[i]=="application/msword"){
+          if(type=="application/msword"){
 
             doc <- textreadr::download(
               mainlist$document[[i]],
-              file.out =  paste0(abs(runif(1, min=1, max=5000000)),".doc"),
-              loc=tempdir()
+              file.out =  paste0("tempfilefolder/",i,".doc"),
+              loc=getwd()
             )
 
-            textreadr::read_doc(file=doc) %>%
-              paste(sep = " ", collapse = " ") %>%
-              stringr::str_squish() -> text
+            text <-  tryCatch({
+
+              textreadr::read_doc(file=doc) %>%
+                paste(sep = " ", collapse = " ") %>%
+                stringr::str_squish()
+
+            },
+            error=function(e){
+
+              as.character(e)
+
+            }
+            )
+
+            if(stringr::str_detect(text, "is not a Word Document.")){
+
+              name <- doconv::to_pdf(input = doc,timeout =12000)
+
+              pdftools::pdf_text(name) %>%
+                paste(sep = " ") %>%
+                stringr::str_replace_all( stringr::fixed("\n"), " ") %>%
+                stringr::str_replace_all( stringr::fixed("\r"), " ") %>%
+                stringr::str_replace_all( stringr::fixed("\t"), " ") %>%
+                stringr::str_replace_all( stringr::fixed("\""), " ") %>%
+                paste(sep = " ", collapse = " ") %>%
+                stringr::str_squish() %>%
+                stringr::str_replace_all("- ", "") -> text
+
+              unlink(name)
+              unlink(doc)
+
+            }
 
             unlink(doc)
 
             cbind(
               mainlist[i,]
               ,data.frame(text = text)
-            )
+            ) ->  list[[i]]
 
           }
-          else if(mainlist$mimetype[i]=="application/pdf"){
+          else if(type=="application/pdf"){
 
             pdftools::pdf_text(mainlist$document[[i]]) %>%
               paste(sep = " ") %>%
@@ -442,13 +541,35 @@ parse_documents <- function(mainlist,use_parallel=TRUE){
             cbind(
               mainlist[i,]
               ,data.frame(text = text)
-            )}
-          else if (mainlist$mimetype[i]=="application/vnd.openxmlformats-officedocument.wordprocessingml.document"){
+            ) ->  list[[i]]
+
+          }
+        else if (type%in%c("application/rtf")){
+
+          doc <- textreadr::download(
+            mainlist$document[[i]],
+            file.out =  paste0(i,".rtf"),
+            loc=getwd()
+          )
+
+          textreadr::read_document(file=doc) %>%
+            paste(sep = " ", collapse = " ") %>%
+            stringr::str_squish() -> text
+
+          unlink(doc)
+
+          cbind(
+            mainlist[i,]
+            ,data.frame(text = text)->  list[[i]]
+          )
+
+        }
+        else if (type%in%c("application/vnd.openxmlformats-officedocument.wordprocessingml.document","binary/octet-stream","application/octet-stream")){
 
             doc <- textreadr::download(
               mainlist$document[[i]],
-              file.out =  paste0(abs(runif(1, min=1, max=5000000)),".docx"),
-              loc=tempdir()
+              file.out =  paste0(i,".docx"),
+              loc=getwd()
             )
 
             textreadr::read_document(file=doc) %>%
@@ -460,24 +581,14 @@ parse_documents <- function(mainlist,use_parallel=TRUE){
             cbind(
               mainlist[i,]
               ,data.frame(text = text)
-            )
+            ) ->  list[[i]]
           }
-          }
 
-          ,
+          },error=function(e){
 
-          error=function(e){
-
-            cbind(
-              mainlist[i,]
-              ,data.frame(text = "empty")
-            ) -> list[[i]]
-
-            skip_to_next <<- TRUE
+            stop()
           }
         )
-
-        if(skip_to_next) { next }
 
         #message(i," ",mainlist$aggregaattype[[i]])
 
@@ -488,6 +599,7 @@ parse_documents <- function(mainlist,use_parallel=TRUE){
 
   }# end parallel false
 
+  unlink("tempfilefolder", recursive=TRUE)
   message(crayon::green(cli::symbol$tick,"Made",length(mainlist$document),"calls in", round(time_used[[3]],1), "seconds."))
 
   return(list)
@@ -535,7 +647,9 @@ get_written_questions_details <- function(date_range_from,date_range_to,use_para
   message(crayon::green(cli::symbol$tick,"Getting the details on the written questions." ))
 
    list %>%
-     dplyr::mutate(id_fact = gsub("/","",id_fact)) -> list
+     dplyr::mutate(id_fact = gsub("/","",id_fact)) %>%
+     dplyr::select(-document) %>%
+     dplyr::distinct() -> list
 
   result <- call_api_multiple_times(iterator=list$id_fact,
                                     URL = list$url,
@@ -665,8 +779,8 @@ get_sessions_details <- function(date_range_from,date_range_to,plen_comm = "plen
                                    ,parlementaire_initiatieven
                                    ,verzoekschrift) , names_to = "type_activiteit", values_to = "value") %>%
       tidyr::unnest_wider(value,names_repair = "unique") %>%
-      dplyr::filter(!is.na(id)) %>%
-      tidyr::unnest(cols = c(id,contacttype, link, objecttype, onderwerp, titel,filewebpath, zittingsjaar),names_sep="_",keep_empty = TRUE)  %>%
+      dplyr::filter(!is.na(id))  %>%
+      tidyr::unnest(cols = c(id,contacttype, link, objecttype, onderwerp, titel,document,filewebpath, zittingsjaar),names_sep="_",keep_empty = TRUE)  %>%
       tidyr::unnest_wider(link,names_sep="_") %>%
       dplyr::select(id_verg
                     ,datumbegin
@@ -679,6 +793,7 @@ get_sessions_details <- function(date_range_from,date_range_to,plen_comm = "plen
                     ,type_specifiek= objecttype_naam
                     ,onderwerp
                     ,titel
+                    ,document_bestandsnaam
                     ,link_pdf=filewebpath
                     ,contacttype ) %>%
       dplyr::distinct() -> result
@@ -693,8 +808,8 @@ get_sessions_details <- function(date_range_from,date_range_to,plen_comm = "plen
 
       result  %>%
         dplyr::select(id_verg,fact_link) %>%
-        dplyr::mutate(id = stringr::str_sub(fact_link,start=-7)) %>%
-        dplyr::mutate(url = stringr::str_sub(fact_link,end=-8)) %>%
+        dplyr::mutate(id = stringr::str_extract(fact_link,"[0-9]+")) %>%
+        dplyr::mutate(url = stringr::str_extract(fact_link,"[^0-9]+")) %>%
         dplyr::distinct() %>%
         dplyr::filter(!is.na(url)) -> list
 
@@ -711,17 +826,21 @@ get_sessions_details <- function(date_range_from,date_range_to,plen_comm = "plen
         tidyr::unnest(`result_parlementair-initiatief`,names_sep="_",keep_empty = TRUE) %>%
         dplyr::select(id_fact,`result_parlementair-initiatief_document`) %>%
         tidyr::unnest(`result_parlementair-initiatief_document`,names_sep="_",keep_empty = TRUE) %>%
-        dplyr::rename(document=`result_parlementair-initiatief_document_url`) %>%
+        dplyr::rename(document=`result_parlementair-initiatief_document_url`,
+                      document_bestandsnaam_extra=`result_parlementair-initiatief_document_bestandsnaam`) %>%
         dplyr::filter(!is.na(document)) %>%
-        dplyr::mutate(id = stringr::str_sub(document,start=-7)) %>%
+        dplyr::mutate(id= stringr::str_split(document, "(?<!=)=(?!=)") ) %>%
+        tidyr::unnest_wider(id,names_sep="_") %>%
         dplyr::left_join(list %>% dplyr::select(id_verg,id),by=c("id_fact"="id")) %>%
-        dplyr::select(id_verg,id_fact,url_docs=document ) %>%
+        dplyr::select(id_verg,id_fact,url_docs=document,document_bestandsnaam_extra ) %>%
         dplyr::distinct() %>%
         dplyr::mutate(id_fact = as.numeric(id_fact)) -> docs
 
       result %>%
         dplyr::left_join(docs, by=c("id_verg"="id_verg","id_fact"="id_fact")) %>%
         tidyr::pivot_longer(cols=c("url_docs","link_pdf"),values_to="link_pdf") %>%
+        # dplyr::select(-name) %>%
+        # tidyr::pivot_longer(cols=c("document_bestandsnaam","document_bestandsnaam_extra"),values_to="document_bestandsnaam") %>%
         dplyr::select(-name) %>%
         dplyr::distinct() -> result_joined
 
@@ -832,8 +951,8 @@ get_sessions_details <- function(date_range_from,date_range_to,plen_comm = "plen
 
       result_joined %>%
         dplyr::select(id_verg,fact_link) %>%
-        dplyr::mutate(id = stringr::str_sub(fact_link,start=-7)) %>%
-        dplyr::mutate(url = stringr::str_sub(fact_link,end=-8)) %>%
+        dplyr::mutate(id = stringr::str_extract(fact_link,"[0-9]+")) %>%
+        dplyr::mutate(url = stringr::str_extract(fact_link,"[^0-9]+")) %>%
         dplyr::distinct() %>%
         dplyr::filter(!is.na(url))-> list
 
@@ -968,8 +1087,8 @@ get_plen_comm_details <- function(date_range_from,date_range_to,fact,plen_comm =
     dplyr::filter(type_eng%in%fact) %>%
     dplyr::select(fact_link) %>%
     tidyr::unnest(fact_link,keep_empty = TRUE) %>%
-    dplyr::mutate(id = stringr::str_sub(fact_link,start=-7)) %>%
-    dplyr::mutate(url = stringr::str_sub(fact_link,end=-8)) %>%
+    dplyr::mutate(id = stringr::str_extract(fact_link,"[0-9]+")) %>%
+    dplyr::mutate(url = stringr::str_extract(fact_link,"[^0-9]+")) %>%
     dplyr::distinct()  -> mainlist
 
   if(length(mainlist$fact_link)==0){
@@ -1175,13 +1294,11 @@ get_plen_comm_documents <- function(date_range_from,date_range_to,fact,plen_comm
     dplyr::left_join(type_conv,by=c("type_activiteit"="type_nl")) %>%
     dplyr::filter(type_eng%in%fact) %>%
     dplyr::filter(!is.na(link_pdf)) %>%
-    dplyr::mutate(id = stringr::str_sub(link_pdf,start=-7)) %>%
-    dplyr::mutate(mimetype = "application/pdf") %>%
-    dplyr::select(id_verg,id_fact,id,document= link_pdf,mimetype ) %>%
+    dplyr::mutate(id = stringr::str_extract(link_pdf,"[0-9]+")) %>%
+    dplyr::select(id_verg,id_fact,id,document= link_pdf ) %>% #
     dplyr::distinct() -> mainlist
 
   # Getting the documents in the details of FACT ----------------------------
-
 
   if(length(mainlist$document)==0){
 
@@ -1276,7 +1393,7 @@ get_work <- function(date_range_from, date_range_to, fact="debates", type="detai
                                               ,use_parallel=use_parallel)
 
     object %>%
-      dplyr::select(id_fact,text) %>%
+      dplyr::select(id_fact,publicatiedatum,text) %>%
       as.data.frame -> result
 
     return(result)
