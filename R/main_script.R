@@ -328,8 +328,26 @@ parse_documents <- function(mainlist,use_parallel=TRUE){
     dir.create("tempfilefolder")
     time_used <- system.time({
 
+      # readr::read_file(doc)
+      # readr::read_file_raw(doc) -> text %>% base64enc::base64encode() -> text
+      #
+      # readr::read_lines(doc)
+
+
+      # res <- httr::GET(mainlist$document[[i]])
+      # readr::read_lines(res$content)
+      #
+      # readr::read_file("https://docs.vlaamsparlement.be/pfile?id=215338")
+      #
+      # readr::read_lines(mainlist$document[[i]])
+
+      # fix residual mop up with doc
+      # get support for RTF
+      # implement optional resuce
+
+
       list <- foreach::foreach(i = seq_along(1:length(mainlist$document)),
-                               .packages=c("dplyr","purrr","httr","jsonlite","pdftools","stringr","textreadr","doconv"),
+                               .packages=c("dplyr","purrr","httr","jsonlite","pdftools","stringr","antiword","doconv","officer"),
                                .errorhandling = c("remove")) %dopar% {
 
                                  if("mimetype"%in%names(mainlist)){
@@ -340,17 +358,28 @@ parse_documents <- function(mainlist,use_parallel=TRUE){
 
                                 if(type=="application/msword"){
 
-                                  doc <- textreadr::download(
-                                    mainlist$document[[i]],
-                                    file.out =  paste0("tempfilefolder/",i,".doc"),
-                                    loc=getwd()
+                                  text <-  tryCatch({
+
+                                    antiword::antiword(mainlist$document[[i]]) %>%
+                                      stringr::str_replace_all( stringr::fixed("\n"), " ") %>%
+                                      stringr::str_replace_all( stringr::fixed("\r"), " ") %>%
+                                      stringr::str_replace_all( stringr::fixed("\t"), " ") %>%
+                                      stringr::str_replace_all( stringr::fixed("\""), " ")
+
+                                  },
+                                  error=function(e){
+
+                                    as.character(e)
+
+                                  }
                                   )
 
-                                  textreadr::read_doc(file=doc) %>%
-                                      paste(sep = " ", collapse = " ") %>%
-                                      stringr::str_squish() -> text
+                                  if(stringr::str_detect(text, "is not a Word Document.")){
 
-                                  unlink(doc)
+                                    doc <-curl::curl_download(mainlist$document[[i]],
+                                                              destfile=  paste0("tempfilefolder/",i,".doc"))
+                                    stop()
+                                  }
 
                                   cbind(
                                     mainlist[i,]
@@ -374,39 +403,41 @@ parse_documents <- function(mainlist,use_parallel=TRUE){
                                      mainlist[i,]
                                      ,data.frame(text = text)
                                    )}
+
                                  else if (type%in%c("application/rtf")){
 
-                                   doc <- textreadr::download(
-                                     mainlist$document[[i]],
-                                     file.out =  paste0(i,".rtf"),
-                                     loc=getwd()
-                                   )
-
-                                   textreadr::read_document(file=doc) %>%
-                                     paste(sep = " ", collapse = " ") %>%
-                                     stringr::str_squish() -> text
-
-                                   unlink(doc)
-
-                                   cbind(
-                                     mainlist[i,]
-                                     ,data.frame(text = text)
-                                   )
+                                   # doc <- textreadr::download(
+                                   #   mainlist$document[[i]],
+                                   #   file.out =  paste0(i,".rtf"),
+                                   #   loc=getwd()
+                                   # )
+                                   #
+                                   # textreadr::read_document(file=doc) %>%
+                                   #   paste(sep = " ", collapse = " ") %>%
+                                   #   stringr::str_squish() -> text
+                                   #
+                                   # unlink(doc)
+                                   #
+                                   # cbind(
+                                   #   mainlist[i,]
+                                   #   ,data.frame(text = text)
+                                   # )
 
                                    }
                                  else if (type%in%c("application/vnd.openxmlformats-officedocument.wordprocessingml.document","binary/octet-stream","application/octet-stream")){
 
-                                   doc <- textreadr::download(
-                                     mainlist$document[[i]],
-                                     file.out =  paste0(i,".docx"),
-                                     loc=getwd()
-                                   )
+                                   doc <-curl::curl_download(mainlist$document[[i]],
+                                                       destfile=  paste0("tempfilefolder/",i,".docx"))
 
-                                   textreadr::read_document(file=doc) %>%
+                                   officer::read_docx(doc) %>%
+                                     officer::docx_summary() %>%
+                                     dplyr::filter(content_type == "paragraph") %>%
+                                     dplyr::select(text) %>%
                                      paste(sep = " ", collapse = " ") %>%
-                                     stringr::str_squish() -> text
+                                     stringr::str_squish() %>%
+                                     stringr::str_replace_all( stringr::fixed("\""), " ") -> text
 
-                                   unlink(doc)
+                                   unlink(docx)
 
                                    cbind(
                                      mainlist[i,]
@@ -444,8 +475,6 @@ parse_documents <- function(mainlist,use_parallel=TRUE){
             ,data.frame(text = text)
           ) -> list_recov[[i]]
 
-
-
           unlink(name)
           unlink(paste0("tempfilefolder/",files$files[[i]]))
 
@@ -479,17 +508,13 @@ parse_documents <- function(mainlist,use_parallel=TRUE){
 
           if(type=="application/msword"){
 
-            doc <- textreadr::download(
-              mainlist$document[[i]],
-              file.out =  paste0("tempfilefolder/",i,".doc"),
-              loc=getwd()
-            )
-
             text <-  tryCatch({
 
-              textreadr::read_doc(file=doc) %>%
-                paste(sep = " ", collapse = " ") %>%
-                stringr::str_squish()
+              antiword::antiword(mainlist$document[[i]]) %>%
+                stringr::str_replace_all( stringr::fixed("\n"), " ") %>%
+                stringr::str_replace_all( stringr::fixed("\r"), " ") %>%
+                stringr::str_replace_all( stringr::fixed("\t"), " ") %>%
+                stringr::str_replace_all( stringr::fixed("\""), " ")
 
             },
             error=function(e){
@@ -546,37 +571,38 @@ parse_documents <- function(mainlist,use_parallel=TRUE){
           }
         else if (type%in%c("application/rtf")){
 
-          doc <- textreadr::download(
-            mainlist$document[[i]],
-            file.out =  paste0(i,".rtf"),
-            loc=getwd()
-          )
+          # doc <- textreadr::download(
+          #   mainlist$document[[i]],
+          #   file.out =  paste0(i,".rtf"),
+          #   loc=getwd()
+          # )
 
-          textreadr::read_document(file=doc) %>%
-            paste(sep = " ", collapse = " ") %>%
-            stringr::str_squish() -> text
-
-          unlink(doc)
-
-          cbind(
-            mainlist[i,]
-            ,data.frame(text = text)->  list[[i]]
-          )
+          # textreadr::read_document(file=doc) %>%
+          #   paste(sep = " ", collapse = " ") %>%
+          #   stringr::str_squish() -> text
+          #
+          # unlink(doc)
+          #
+          # cbind(
+          #   mainlist[i,]
+          #   ,data.frame(text = text)->  list[[i]]
+          # )
 
         }
         else if (type%in%c("application/vnd.openxmlformats-officedocument.wordprocessingml.document","binary/octet-stream","application/octet-stream")){
 
-            doc <- textreadr::download(
-              mainlist$document[[i]],
-              file.out =  paste0(i,".docx"),
-              loc=getwd()
-            )
+            doc <-curl::curl_download(mainlist$document[[i]],
+                                      destfile=  paste0("tempfilefolder/",i,".docx"))
 
-            textreadr::read_document(file=doc) %>%
+            officer::read_docx(doc) %>%
+              officer::docx_summary() %>%
+              dplyr::filter(content_type == "paragraph") %>%
+              dplyr::select(text) %>%
               paste(sep = " ", collapse = " ") %>%
-              stringr::str_squish() -> text
+              stringr::str_squish() %>%
+              stringr::str_replace_all( stringr::fixed("\""), " ") -> text
 
-            unlink(doc)
+            unlink(docx)
 
             cbind(
               mainlist[i,]
