@@ -29,7 +29,6 @@ Imports:
     pdftools,
     purrr,
     stringr,
-    textreadr,
     tibble,
     tidyr (>= 1.2.0),
     xml2
