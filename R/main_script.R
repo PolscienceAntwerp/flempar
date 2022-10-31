@@ -289,7 +289,7 @@ use_generalized_query <- function(date_range_from,date_range_to, type = "Schrift
     tidyr::unnest(metatags,keep_empty = TRUE)  %>%
     tidyr::unnest(metatag,keep_empty = TRUE)  %>%
     dplyr::distinct() %>%
-    dplyr::filter(name %in% c("publicatiedatum","opendata","document","aggregaattype","mimetype")) %>%
+    dplyr::filter(name %in% c("publicatiedatum","opendata","document","aggregaattype","mimetype","minister","vraagsteller")) %>%
     tidyr::pivot_wider(names_from = name,values_from = value) %>%
     dplyr::mutate(publicatiedatum = lubridate::date(publicatiedatum)) %>%
     dplyr::mutate(id_fact = stringr::str_extract(opendata,"[0-9]+")) %>%
@@ -328,23 +328,11 @@ parse_documents <- function(mainlist,use_parallel=TRUE){
     dir.create("tempfilefolder")
     time_used <- system.time({
 
-      # readr::read_file(doc)
-      # readr::read_file_raw(doc) -> text %>% base64enc::base64encode() -> text
-      #
-      # readr::read_lines(doc)
 
-
-      # res <- httr::GET(mainlist$document[[i]])
-      # readr::read_lines(res$content)
-      #
-      # readr::read_file("https://docs.vlaamsparlement.be/pfile?id=215338")
-      #
-      # readr::read_lines(mainlist$document[[i]])
-
-      # fix residual mop up with doc
-      # get support for RTF
       # implement optional resuce
-
+      # test non parallel
+      # get name of files to see extension (instead of extra call)
+      # problem with 2010 -> fact="parliamentary_initiatives" type="document" plen_comm="comm"
 
       list <- foreach::foreach(i = seq_along(1:length(mainlist$document)),
                                .packages=c("dplyr","purrr","httr","jsonlite","pdftools","stringr","antiword","doconv","officer"),
@@ -406,27 +394,15 @@ parse_documents <- function(mainlist,use_parallel=TRUE){
 
                                  else if (type%in%c("application/rtf")){
 
-                                   # doc <- textreadr::download(
-                                   #   mainlist$document[[i]],
-                                   #   file.out =  paste0(i,".rtf"),
-                                   #   loc=getwd()
-                                   # )
-                                   #
-                                   # textreadr::read_document(file=doc) %>%
-                                   #   paste(sep = " ", collapse = " ") %>%
-                                   #   stringr::str_squish() -> text
-                                   #
-                                   # unlink(doc)
-                                   #
-                                   # cbind(
-                                   #   mainlist[i,]
-                                   #   ,data.frame(text = text)
-                                   # )
+                                   cbind(
+                                     mainlist[i,]
+                                     ,data.frame(text = "RTF not supported")
+                                   )
 
                                    }
                                  else if (type%in%c("application/vnd.openxmlformats-officedocument.wordprocessingml.document","binary/octet-stream","application/octet-stream")){
 
-                                   doc <-curl::curl_download(mainlist$document[[i]],
+                                   doc<-curl::curl_download(mainlist$document[[i]],
                                                        destfile=  paste0("tempfilefolder/",i,".docx"))
 
                                    officer::read_docx(doc) %>%
@@ -437,12 +413,19 @@ parse_documents <- function(mainlist,use_parallel=TRUE){
                                      stringr::str_squish() %>%
                                      stringr::str_replace_all( stringr::fixed("\""), " ") -> text
 
-                                   unlink(docx)
+                                   unlink(doc)
 
                                    cbind(
                                      mainlist[i,]
                                      ,data.frame(text = text)
                                    )
+                                 } else{
+
+                                   cbind(
+                                     mainlist[i,]
+                                     ,data.frame(text = "Failed: filetype not supported")
+                                   )
+
                                  }
 
 
@@ -526,6 +509,9 @@ parse_documents <- function(mainlist,use_parallel=TRUE){
 
             if(stringr::str_detect(text, "is not a Word Document.")){
 
+              doc <-curl::curl_download(mainlist$document[[i]],
+                                        destfile=  paste0("tempfilefolder/",i,".doc"))
+
               name <- doconv::to_pdf(input = doc,timeout =12000)
 
               pdftools::pdf_text(name) %>%
@@ -571,22 +557,10 @@ parse_documents <- function(mainlist,use_parallel=TRUE){
           }
         else if (type%in%c("application/rtf")){
 
-          # doc <- textreadr::download(
-          #   mainlist$document[[i]],
-          #   file.out =  paste0(i,".rtf"),
-          #   loc=getwd()
-          # )
-
-          # textreadr::read_document(file=doc) %>%
-          #   paste(sep = " ", collapse = " ") %>%
-          #   stringr::str_squish() -> text
-          #
-          # unlink(doc)
-          #
-          # cbind(
-          #   mainlist[i,]
-          #   ,data.frame(text = text)->  list[[i]]
-          # )
+          cbind(
+            mainlist[i,]
+            ,data.frame(text = "RTF not supported")
+          ) ->  list[[i]]
 
         }
         else if (type%in%c("application/vnd.openxmlformats-officedocument.wordprocessingml.document","binary/octet-stream","application/octet-stream")){
@@ -608,7 +582,14 @@ parse_documents <- function(mainlist,use_parallel=TRUE){
               mainlist[i,]
               ,data.frame(text = text)
             ) ->  list[[i]]
-          }
+        }else{
+
+          cbind(
+            mainlist[i,]
+            ,data.frame(text = "Failed: filetype not supported")
+          ) ->  list[[i]]
+
+        }
 
           },error=function(e){
 
@@ -631,7 +612,6 @@ parse_documents <- function(mainlist,use_parallel=TRUE){
   return(list)
 
 }
-
 
 #' Get the PDF documents of the written questions
 #'
