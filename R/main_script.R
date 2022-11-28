@@ -759,7 +759,6 @@ get_sessions_details <- function(date_range_from, date_range_to, plen_comm, type
       tidyr::unnest_wider(verg,names_sep="_") %>%
       tidyr::unnest_wider(verg_journaallijn,names_sep="_") %>%
       tidyr::unnest_wider(verg_plenairehandelingen,names_sep="_")  %>%
-      dplyr::filter(id_verg=="1299413")%>%
       dplyr::select(id_verg
                     ,woordelijk_verslag=verg_plenairehandelingen_pdffilewebpath
                     ,journaallijn_id=verg_journaallijn_id
@@ -1192,6 +1191,7 @@ get_plen_comm_details <- function(date_range_from,date_range_to,fact,plen_comm="
                     ,vergadering
                     ) %>%
       tidyr::unnest(c(vergadering),keep_empty = TRUE) %>%
+      guarantee_field(c("omschrijving","omschrijving-kort","type","subtype","vergaderzaal","video-youtube-id")) %>%
       dplyr::select(verg_id=id
                     ,id_fact
                     ,journaallijn_id
