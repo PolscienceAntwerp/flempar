@@ -7,7 +7,8 @@
 get_sessions_details(
   date_range_from,
   date_range_to,
-  plen_comm = "plen",
+  plen_comm,
+  type = "details",
   use_parallel = TRUE,
   raw = FALSE,
   extra_via_fact = FALSE
