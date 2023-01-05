@@ -1105,18 +1105,29 @@ get_plen_comm_speech <- function(date_range_from,date_range_to,fact,plen_comm="p
     tibble::tibble(col = result, journaallijn_id = names(result)) %>%
       tidyr::unnest_wider(col) %>%
       tidyr::unnest_wider(vrageninterpellatie,names_sep="_") %>%
-      tidyr::unnest(c(vrageninterpellatie_id,vrageninterpellatie_onderwerp,vrageninterpellatie_titel),keep_empty = TRUE) %>%
+      guarantee_field(c("vrageninterpellatie_id")) %>%
+      tidyr::unnest(c(vrageninterpellatie_id),keep_empty = TRUE) %>%
+      tidyr::unnest_wider("parlementair-initiatief",names_sep="_") %>%
+      guarantee_field(c("parlementair-initiatief_id","debat")) %>%
+      tidyr::unnest(c("parlementair-initiatief_id"),keep_empty = TRUE) %>%
+      tidyr::unnest_wider(c("debat"),names_sep="_") %>%
       tidyr::unnest_wider(spreker,names_sep="_") %>%
       guarantee_field("spreker_persoon") %>%
       tidyr::unnest_wider(spreker_persoon,names_sep="_") %>%
-      guarantee_field(c("spreker_sprekertekst","spreker_sprekertitel","spreker_persoon_id")) %>%
-      dplyr::select(id_fact=vrageninterpellatie_id
+      guarantee_field(c("spreker_sprekertekst","spreker_sprekertitel","spreker_persoon_id","debat_id")) %>%
+      dplyr::select(vrageninterpellatie_id
+                    ,`parlementair-initiatief_id`
+                    , debat_id
                     # ,fact_onderwerp=vrageninterpellatie_onderwerp
                     # ,fact_titel=vrageninterpellatie_titel
                     ,journaallijn_id
                     ,text=spreker_sprekertekst
                     ,sprekertitel=spreker_sprekertitel
                     ,persoon_id=spreker_persoon_id ) %>%
+      dplyr::mutate(id_fact= ifelse(!is.na(vrageninterpellatie_id),vrageninterpellatie_id,
+                                           ifelse(!is.na(`parlementair-initiatief_id`),`parlementair-initiatief_id`,
+                                                  ifelse(!is.na(debat_id),debat_id)))) %>%
+      dplyr::select(-vrageninterpellatie_id,-`parlementair-initiatief_id`,-debat_id) %>%
       tidyr::unnest(cols = c(text, sprekertitel,persoon_id),keep_empty = TRUE) %>%
       dplyr::mutate(journaallijn_id = as.character(journaallijn_id)) %>%
       dplyr::mutate(id_fact = as.character(id_fact)) -> raw_text_spoken
