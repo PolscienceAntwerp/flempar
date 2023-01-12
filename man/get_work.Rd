@@ -12,7 +12,8 @@ get_work(
   plen_comm = "plen",
   use_parallel = TRUE,
   raw = FALSE,
-  extra_via_fact = FALSE
+  extra_via_fact = FALSE,
+  two_columns_pdf = FALSE
 )
 }
 \arguments{
@@ -31,6 +32,8 @@ get_work(
 \item{raw}{Boolean: should the raw object be returned?}
 
 \item{extra_via_fact}{Boolean: also search the underlying endpoint for linked documents? This may return documents not linked to the specific meeting, thus may also include meetings on dates before/after the date range.}
+
+\item{two_columns_pdf}{Boolean: Use when you encounter two-colummned PDFs.}
 }
 \description{
 Get data from the Flemish parliament

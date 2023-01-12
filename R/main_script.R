@@ -314,15 +314,49 @@ use_generalized_query <- function(date_range_from,date_range_to, type = "Schrift
 
 }
 
+#' Costom trim
+#'
+#' @param x
+#'
+trim <- function (x) gsub("^\\s+|\\s+$", "", x)
+
+#' Function to read in two-column pdfs
+#'
+#' @param text result from pdftools call
+#'
+read_text <- function(text) {
+  result <- ''
+  #Get all index of " " from page.
+  lstops <- gregexpr(pattern =" ",text)
+  #Puts the index of the most frequents ' ' in a vector.
+  stops <- as.integer(names(sort(table(unlist(lstops)),decreasing=TRUE)[1:2]))
+  #Slice based in the specified number of colums (this can be improved)
+  for(i in seq(1, 2, by=1))
+  {
+    temp_result <- sapply(text, function(x){
+      start <- 1
+      stop <-stops[i]
+      if(i > 1)
+        start <- stops[i-1] + 1
+      if(i == 2)#last column, read until end.
+        stop <- nchar(x)+1
+      substr(x, start=start, stop=stop)
+    }, USE.NAMES=FALSE)
+    temp_result <- trim(temp_result)
+    result <- append(result, temp_result)
+  }
+  result
+}
 
 #' Parse PDF documents
 #'
 #' @param mainlist Data frame with documents to be parsed
 #' @param use_parallel Boolean: should parallel workers be used to call the API?
+#' @param two_columns_pdf Boolean: Use when you encounter two-colummned PDFs
 #' @importFrom foreach %dopar%
 #' @importFrom utils object.size
 #' @importFrom dplyr %>%
-parse_documents <- function(mainlist,use_parallel=TRUE){
+parse_documents <- function(mainlist,use_parallel=TRUE,two_columns_pdf=FALSE){
 
   message("Making ",length(mainlist$document)," calls." )
 
@@ -384,6 +418,29 @@ parse_documents <- function(mainlist,use_parallel=TRUE){
                                 }
                                  else if(type=="application/pdf"){
 
+                                   if(two_columns_pdf == TRUE){
+
+                                     txt <- pdftools::pdf_text(mainlist$document[[i]])
+                                     result <- ''
+                                     for (i in 1:length(txt)) {
+                                       page <- txt[i]
+                                       t1 <- unlist(strsplit(page, "\n"))
+                                       maxSize <- max(nchar(t1))
+                                       t1 <- paste0(t1,strrep(" ", maxSize-nchar(t1)))
+                                       result = append(result,read_text(t1))
+                                     }
+                                     result %>%
+                                       paste(sep = " ") %>%
+                                       stringr::str_replace_all( stringr::fixed("\n"), " ") %>%
+                                       stringr::str_replace_all( stringr::fixed("\r"), " ") %>%
+                                       stringr::str_replace_all( stringr::fixed("\t"), " ") %>%
+                                       stringr::str_replace_all( stringr::fixed("\""), " ") %>%
+                                       paste(sep = " ", collapse = " ") %>%
+                                       stringr::str_squish() %>%
+                                       stringr::str_replace_all("- ", "") -> text
+
+                                   }else{
+
                                    pdftools::pdf_text(mainlist$document[[i]]) %>%
                                      paste(sep = " ") %>%
                                      stringr::str_replace_all( stringr::fixed("\n"), " ") %>%
@@ -393,6 +450,8 @@ parse_documents <- function(mainlist,use_parallel=TRUE){
                                      paste(sep = " ", collapse = " ") %>%
                                      stringr::str_squish() %>%
                                      stringr::str_replace_all("- ", "") -> text
+
+                                   }
 
                                    cbind(
                                      mainlist[i,]
@@ -408,7 +467,7 @@ parse_documents <- function(mainlist,use_parallel=TRUE){
                                    }
                                  else if (type%in%c("application/vnd.openxmlformats-officedocument.wordprocessingml.document","binary/octet-stream","application/octet-stream")){
 
-                                   doc<-curl::curl_download(mainlist$document[[i]],
+                                   doc <-curl::curl_download(mainlist$document[[i]],
                                                        destfile=  paste0("tempfilefolder/",i,".docx"))
 
                                    officer::read_docx(doc) %>%
@@ -417,7 +476,8 @@ parse_documents <- function(mainlist,use_parallel=TRUE){
                                      dplyr::select(text) %>%
                                      paste(sep = " ", collapse = " ") %>%
                                      stringr::str_squish() %>%
-                                     stringr::str_replace_all( stringr::fixed("\""), " ") -> text
+                                     stringr::str_replace_all( stringr::fixed("\""), " ") %>%
+                                     stringr::str_replace_all( stringr::fixed("c("), " ") -> text
 
                                    unlink(doc)
 
@@ -544,15 +604,41 @@ parse_documents <- function(mainlist,use_parallel=TRUE){
           }
           else if(type=="application/pdf"){
 
-            pdftools::pdf_text(mainlist$document[[i]]) %>%
-              paste(sep = " ") %>%
-              stringr::str_replace_all( stringr::fixed("\n"), " ") %>%
-              stringr::str_replace_all( stringr::fixed("\r"), " ") %>%
-              stringr::str_replace_all( stringr::fixed("\t"), " ") %>%
-              stringr::str_replace_all( stringr::fixed("\""), " ") %>%
-              paste(sep = " ", collapse = " ") %>%
-              stringr::str_squish() %>%
-              stringr::str_replace_all("- ", "") -> text
+
+            if(two_columns_pdf == TRUE){
+
+              txt <- pdftools::pdf_text(mainlist$document[[i]])
+              result <- ''
+              for (i in 1:length(txt)) {
+                page <- txt[i]
+                t1 <- unlist(strsplit(page, "\n"))
+                maxSize <- max(nchar(t1))
+                t1 <- paste0(t1,strrep(" ", maxSize-nchar(t1)))
+                result = append(result,read_text(t1))
+              }
+              result %>%
+                paste(sep = " ") %>%
+                stringr::str_replace_all( stringr::fixed("\n"), " ") %>%
+                stringr::str_replace_all( stringr::fixed("\r"), " ") %>%
+                stringr::str_replace_all( stringr::fixed("\t"), " ") %>%
+                stringr::str_replace_all( stringr::fixed("\""), " ") %>%
+                paste(sep = " ", collapse = " ") %>%
+                stringr::str_squish() %>%
+                stringr::str_replace_all("- ", "") -> text
+
+            }else{
+
+              pdftools::pdf_text(mainlist$document[[i]]) %>%
+                paste(sep = " ") %>%
+                stringr::str_replace_all( stringr::fixed("\n"), " ") %>%
+                stringr::str_replace_all( stringr::fixed("\r"), " ") %>%
+                stringr::str_replace_all( stringr::fixed("\t"), " ") %>%
+                stringr::str_replace_all( stringr::fixed("\""), " ") %>%
+                paste(sep = " ", collapse = " ") %>%
+                stringr::str_squish() %>%
+                stringr::str_replace_all("- ", "") -> text
+
+            }
 
             cbind(
               mainlist[i,]
@@ -624,8 +710,9 @@ parse_documents <- function(mainlist,use_parallel=TRUE){
 #' @param date_range_from The start date, should be in format "yyyy-mm-dd".
 #' @param date_range_to The end date, should be in format "yyyy-mm-dd".
 #' @param use_parallel Boolean: should parallel workers be used to call the API?
+#' @param two_columns_pdf Boolean: Use when you encounter two-colummned PDFs
 #' @importFrom dplyr %>%
-get_written_questions_documents <- function(date_range_from,date_range_to,use_parallel=TRUE){
+get_written_questions_documents <- function(date_range_from,date_range_to,use_parallel=TRUE,two_columns_pdf=FALSE){
 
   message("Getting details on the documents." )
 
@@ -1445,6 +1532,7 @@ get_plen_comm_documents <- function(date_range_from,date_range_to,fact,plen_comm
 #' @param use_parallel Boolean: should parallel workers be used to call the API?
 #' @param raw Boolean: should the raw object be returned?
 #' @param extra_via_fact Boolean: also search the underlying endpoint for linked documents? This may return documents not linked to the specific meeting, thus may also include meetings on dates before/after the date range.
+#' @param two_columns_pdf Boolean: Use when you encounter two-colummned PDFs.
 #' @export
 #' @importFrom dplyr %>%
 #' @examples
@@ -1458,7 +1546,7 @@ get_plen_comm_documents <- function(date_range_from,date_range_to,fact,plen_comm
 #'              use_parallel=TRUE )
 #'
 #' }
-get_work <- function(date_range_from, date_range_to, fact="debates", type="details",plen_comm="plen",use_parallel=TRUE,raw=FALSE, extra_via_fact=FALSE){
+get_work <- function(date_range_from, date_range_to, fact="debates", type="details",plen_comm="plen",use_parallel=TRUE,raw=FALSE, extra_via_fact=FALSE,two_columns_pdf=FALSE){
 
   # Check input -------------------------------------------------------------
 
@@ -1516,7 +1604,8 @@ get_work <- function(date_range_from, date_range_to, fact="debates", type="detai
 
     object <- get_written_questions_documents(date_range_from=date_range_from
                                               ,date_range_to=date_range_to
-                                              ,use_parallel=use_parallel)
+                                              ,use_parallel=use_parallel
+                                              ,two_columns_pdf=two_columns_pdf)
 
     object %>%
       dplyr::select(id_fact,publicatiedatum,text) %>%
