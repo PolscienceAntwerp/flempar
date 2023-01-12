@@ -51,18 +51,14 @@
                               , fact="debates"
                               , use_parallel = FALSE
     )), c(1,20))
-<<<<<<< HEAD:tests/testthat/test-main.R
-
   })
 
   test_that("PLEN_OQ_SPEECH", {
-=======
     expect_equal(dim(get_work(date_range_from="2022-01-01"
                               , date_range_to="2022-01-31"
                               , type="details"
                               , fact="debates"
     )), c(1,20))
->>>>>>> 75ed7cd7074100b3edb001c0572c705b7be2235d:test_raamwerk.R
     # plen - oqai
     expect_equal(dim(get_work(date_range_from="2022-01-01"
                               , date_range_to="2022-01-31"
@@ -100,20 +96,17 @@
                               , fact="parliamentary_initiatives"
                               , plen_comm = 'comm'
     )), c(71,24))
-<<<<<<< HEAD:tests/testthat/test-main.R
-
    })
 
    test_that("COMM_OQ_SPECEH", {
-=======
-    expect_equal(dim(get_work(date_range_from="2008-01-01"  
+
+    expect_equal(dim(get_work(date_range_from="2008-01-01"
                               , date_range_to="2008-01-31"
                               , type="details"
                               , fact="parliamentary_initiatives"
                               , plen_comm = 'comm'
                               , use_parallel = FALSE
     )), c(71,24))
->>>>>>> 75ed7cd7074100b3edb001c0572c705b7be2235d:test_raamwerk.R
     # comm - oqai
     expect_equal(dim(get_work(date_range_from="2022-01-01"
                               , date_range_to="2022-01-30"
