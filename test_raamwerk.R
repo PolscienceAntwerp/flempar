@@ -15,6 +15,11 @@ test_that(
     )), c(307,5))
     expect_equal(dim(get_work(date_range_from="2022-01-01"
                               , date_range_to="2022-01-31"
+                              , type="speech"
+                              , fact="parliamentary_initiatives"
+    )), c(307,5))
+    expect_equal(dim(get_work(date_range_from="2022-01-01"
+                              , date_range_to="2022-01-31"
                               , type="details"
                               , fact="parliamentary_initiatives"
                               , extra_via_fact = FALSE
@@ -30,6 +35,11 @@ test_that(
                               , type="details"
                               , fact="debates"
                               , use_parallel = FALSE
+    )), c(1,20))
+    expect_equal(dim(get_work(date_range_from="2022-01-01"
+                              , date_range_to="2022-01-31"
+                              , type="details"
+                              , fact="debates"
     )), c(1,20))
     # plen - oqai
     expect_equal(dim(get_work(date_range_from="2022-01-01"  
@@ -55,6 +65,13 @@ test_that(
                               , type="details"
                               , fact="parliamentary_initiatives"
                               , plen_comm = 'comm'
+    )), c(71,24))
+    expect_equal(dim(get_work(date_range_from="2008-01-01"  
+                              , date_range_to="2008-01-31"
+                              , type="details"
+                              , fact="parliamentary_initiatives"
+                              , plen_comm = 'comm'
+                              , use_parallel = FALSE
     )), c(71,24))
     # comm - oqai
     expect_equal(dim(get_work(date_range_from="2022-01-01"  
