@@ -720,7 +720,7 @@ get_written_questions_documents <- function(date_range_from,date_range_to,use_pa
 
   message("Getting and parsing the documents." )
 
-  list <- parse_documents(mainlist=mainlist,use_parallel=use_parallel)
+  list <- parse_documents(mainlist=mainlist,use_parallel=use_parallel,two_columns_pdf=two_columns_pdf)
 
   tibble::tibble(list=list ) %>%
     tidyr::unnest(list,keep_empty = TRUE) %>%
