@@ -57,12 +57,12 @@ test_that(
                               , plen_comm = 'comm'
     )), c(71,24))
     # comm - oqai
-    expect_equal(dim(get_work(date_range_from="2010-01-01"  
-                              , date_range_to="2010-01-31"
+    expect_equal(dim(get_work(date_range_from="2022-01-01"  
+                              , date_range_to="2022-06-31"
                               , type="speech"
                               , fact="oral_questions_and_interpellations"
                               , plen_comm = 'comm'
-    )), c(X,X))
+    )), c(28031,5))
     expect_equal(dim(get_work(date_range_from="2022-01-01"  
                               , date_range_to="2022-01-31"
                               , type="details"
