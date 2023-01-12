@@ -314,17 +314,12 @@ use_generalized_query <- function(date_range_from,date_range_to, type = "Schrift
 
 }
 
-#' Costom trim
-#'
-#' @param x
-#'
-trim <- function (x) gsub("^\\s+|\\s+$", "", x)
-
 #' Function to read in two-column pdfs
 #'
 #' @param text result from pdftools call
 #'
 read_text <- function(text) {
+  trim <- function (x) gsub("^\\s+|\\s+$", "", x)
   result <- ''
   #Get all index of " " from page.
   lstops <- gregexpr(pattern =" ",text)
@@ -347,6 +342,7 @@ read_text <- function(text) {
   }
   result
 }
+
 
 #' Parse PDF documents
 #'
@@ -373,11 +369,13 @@ parse_documents <- function(mainlist,use_parallel=TRUE,two_columns_pdf=FALSE){
     on.exit(parallel::stopCluster(cl))
     unlink("tempfilefolder", recursive=TRUE)
     dir.create("tempfilefolder")
+
     time_used <- system.time({
 
       list <- foreach::foreach(i = seq_along(1:length(mainlist$document)),
                                .packages=c("dplyr","purrr","httr","jsonlite","pdftools","stringr","antiword","doconv","officer"),
-                               .errorhandling = c("remove")) %dopar% {
+                               .export=c("read_text"),
+                               .errorhandling = c("stop")) %dopar% {
 
                                  if("mimetype"%in%names(mainlist)){
                                    type <- mainlist$mimetype[i]
@@ -457,6 +455,7 @@ parse_documents <- function(mainlist,use_parallel=TRUE,two_columns_pdf=FALSE){
                                      mainlist[i,]
                                      ,data.frame(text = text)
                                    )}
+
                                  else if (type%in%c("application/rtf")){
 
                                    cbind(
