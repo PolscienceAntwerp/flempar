@@ -319,21 +319,19 @@ use_generalized_query <- function(date_range_from,date_range_to, type = "Schrift
 #' @param text result from pdftools call
 #'
 read_text <- function(text) {
-  trim <- function (x) gsub("^\\s+|\\s+$", "", x)
+  trim <- function(x) gsub("^\\s+|\\s+$", "", x)
+  QTD_COLUMNS <- 2
   result <- ''
-  #Get all index of " " from page.
   lstops <- gregexpr(pattern =" ",text)
-  #Puts the index of the most frequents ' ' in a vector.
   stops <- as.integer(names(sort(table(unlist(lstops)),decreasing=TRUE)[1:2]))
-  #Slice based in the specified number of colums (this can be improved)
-  for(i in seq(1, 2, by=1))
+  for(i in seq(1, QTD_COLUMNS, by=1))
   {
     temp_result <- sapply(text, function(x){
       start <- 1
       stop <-stops[i]
       if(i > 1)
         start <- stops[i-1] + 1
-      if(i == 2)#last column, read until end.
+      if(i == QTD_COLUMNS)#last column, read until end.
         stop <- nchar(x)+1
       substr(x, start=start, stop=stop)
     }, USE.NAMES=FALSE)
@@ -342,7 +340,6 @@ read_text <- function(text) {
   }
   result
 }
-
 
 #' Parse PDF documents
 #'
@@ -376,6 +373,7 @@ parse_documents <- function(mainlist,use_parallel=TRUE,two_columns_pdf=FALSE){
                                .packages=c("dplyr","purrr","httr","jsonlite","pdftools","stringr","antiword","doconv","officer"),
                                .export=c("read_text"),
                                .errorhandling = c("stop")) %dopar% {
+
 
                                  if("mimetype"%in%names(mainlist)){
                                    type <- mainlist$mimetype[i]
@@ -420,8 +418,8 @@ parse_documents <- function(mainlist,use_parallel=TRUE,two_columns_pdf=FALSE){
 
                                      txt <- pdftools::pdf_text(mainlist$document[[i]])
                                      result <- ''
-                                     for (i in 1:length(txt)) {
-                                       page <- txt[i]
+                                     for (j in 1:length(txt)) {
+                                       page <- txt[j]
                                        t1 <- unlist(strsplit(page, "\n"))
                                        maxSize <- max(nchar(t1))
                                        t1 <- paste0(t1,strrep(" ", maxSize-nchar(t1)))
@@ -545,6 +543,7 @@ parse_documents <- function(mainlist,use_parallel=TRUE,two_columns_pdf=FALSE){
       list <- vector(mode="list",length= length(mainlist$document))
       for(i in seq_along(1:length(mainlist$document))){
 
+
       tryCatch({
 
           if("mimetype"%in%names(mainlist)){
@@ -608,13 +607,14 @@ parse_documents <- function(mainlist,use_parallel=TRUE,two_columns_pdf=FALSE){
 
               txt <- pdftools::pdf_text(mainlist$document[[i]])
               result <- ''
-              for (i in 1:length(txt)) {
-                page <- txt[i]
+              for (j in 1:length(txt)) {
+                page <- txt[j]
                 t1 <- unlist(strsplit(page, "\n"))
                 maxSize <- max(nchar(t1))
                 t1 <- paste0(t1,strrep(" ", maxSize-nchar(t1)))
                 result = append(result,read_text(t1))
               }
+
               result %>%
                 paste(sep = " ") %>%
                 stringr::str_replace_all( stringr::fixed("\n"), " ") %>%
