@@ -1074,7 +1074,7 @@ get_sessions_details <- function(date_range_from, date_range_to, plen_comm, type
                     ,document
                     ,naam
                     ,journaallijn_id) %>%
-      dplyr::filter(!is.na(document)|!is.na(journaallijn_id)) %>%
+      #dplyr::filter(!is.na(document)|!is.na(journaallijn_id)) %>%
       dplyr::distinct()-> result_joined
 
     if(extra_via_fact == TRUE&type=="document"){
