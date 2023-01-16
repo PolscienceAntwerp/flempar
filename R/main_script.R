@@ -372,8 +372,7 @@ parse_documents <- function(mainlist,use_parallel=TRUE,two_columns_pdf=FALSE){
       list <- foreach::foreach(i = seq_along(1:length(mainlist$document)),
                                .packages=c("dplyr","purrr","httr","jsonlite","pdftools","stringr","antiword","doconv","officer"),
                                .export=c("read_text"),
-                               .errorhandling = c("stop")) %dopar% {
-
+                               .errorhandling = c("pass")) %dopar% {
 
                                  if("mimetype"%in%names(mainlist)){
                                    type <- mainlist$mimetype[i]
@@ -542,7 +541,6 @@ parse_documents <- function(mainlist,use_parallel=TRUE,two_columns_pdf=FALSE){
       dir.create("tempfilefolder")
       list <- vector(mode="list",length= length(mainlist$document))
       for(i in seq_along(1:length(mainlist$document))){
-
 
       tryCatch({
 
