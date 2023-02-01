@@ -364,15 +364,19 @@ parse_documents <- function(mainlist,use_parallel=TRUE,two_columns_pdf=FALSE){
     cl <- parallel::makeCluster(parallel::detectCores() - 1)
     doParallel::registerDoParallel(cl)
     on.exit(parallel::stopCluster(cl))
-    unlink("tempfilefolder", recursive=TRUE)
-    dir.create("tempfilefolder")
+    on.exit(unlink(temp_dir, recursive=TRUE))
+    temp_dir <- tempdir()
+    #dir.create("tempfilefolder")
 
+    # -> problem still here
     time_used <- system.time({
 
       list <- foreach::foreach(i = seq_along(1:length(mainlist$document)),
                                .packages=c("dplyr","purrr","httr","jsonlite","pdftools","stringr","antiword","doconv","officer"),
                                .export=c("read_text"),
                                .errorhandling = c("pass")) %dopar% {
+
+                                 tryCatch({
 
                                  if("mimetype"%in%names(mainlist)){
                                    type <- mainlist$mimetype[i]
@@ -401,15 +405,16 @@ parse_documents <- function(mainlist,use_parallel=TRUE,two_columns_pdf=FALSE){
                                   if(stringr::str_detect(text, "is not a Word Document.")){
 
                                     doc <-curl::curl_download(mainlist$document[[i]],
-                                                              destfile=  paste0("tempfilefolder/",i,".doc"))
-                                    stop()
+                                                              destfile=  paste0(temp_dir,"/",i,".doc"))
+
+                                    rm(doc)
+
+                                  }else{
+                                    cbind(
+                                      mainlist[i,]
+                                      ,data.frame(text = text)
+                                    )
                                   }
-
-                                  cbind(
-                                    mainlist[i,]
-                                    ,data.frame(text = text)
-                                  )
-
                                 }
                                  else if(type=="application/pdf"){
 
@@ -452,7 +457,6 @@ parse_documents <- function(mainlist,use_parallel=TRUE,two_columns_pdf=FALSE){
                                      mainlist[i,]
                                      ,data.frame(text = text)
                                    )}
-
                                  else if (type%in%c("application/rtf")){
 
                                    cbind(
@@ -464,7 +468,7 @@ parse_documents <- function(mainlist,use_parallel=TRUE,two_columns_pdf=FALSE){
                                  else if (type%in%c("application/vnd.openxmlformats-officedocument.wordprocessingml.document","binary/octet-stream","application/octet-stream")){
 
                                    doc <-curl::curl_download(mainlist$document[[i]],
-                                                       destfile=  paste0("tempfilefolder/",i,".docx"))
+                                                       destfile=  paste0(temp_dir,"/",i,".docx"))
 
                                    officer::read_docx(doc) %>%
                                      officer::docx_summary() %>%
@@ -490,9 +494,18 @@ parse_documents <- function(mainlist,use_parallel=TRUE,two_columns_pdf=FALSE){
 
                                  }
 
+                                 },#
+                                error=function(e){
+                                  cbind(
+                                    mainlist[i,]
+                                    ,data.frame(text =  "Error in parallel")
+                                  )
+                                }
+                                )
+
                                }#endparallel
 
-      tibble::tibble(files=list.files("tempfilefolder"))%>%
+      tibble::tibble(files=list.files(temp_dir))%>%
         dplyr::mutate(docfiles=stringr::str_detect(files,".doc")) %>%
         dplyr::filter(docfiles==TRUE) %>%
         dplyr::mutate(index = stringr::str_extract(files,"[0-9]+"))  -> files
@@ -502,32 +515,36 @@ parse_documents <- function(mainlist,use_parallel=TRUE,two_columns_pdf=FALSE){
         list_recov <- vector(mode="list",length= length(files$files))
         for(i in seq_along(1:length(files$files))){
 
-          name <- doconv::to_pdf(input = paste0("tempfilefolder/",files$files[[i]]),timeout =12000)
+         text <- tryCatch({
+            name <- doconv::to_pdf(input = paste0(temp_dir,"/",files$files[[i]]),timeout =12000)
 
-          pdftools::pdf_text(name) %>%
-            paste(sep = " ") %>%
-            stringr::str_replace_all( stringr::fixed("\n"), " ") %>%
-            stringr::str_replace_all( stringr::fixed("\r"), " ") %>%
-            stringr::str_replace_all( stringr::fixed("\t"), " ") %>%
-            stringr::str_replace_all( stringr::fixed("\""), " ") %>%
-            paste(sep = " ", collapse = " ") %>%
-            stringr::str_squish() %>%
-            stringr::str_replace_all("- ", "") -> text
+             pdftools::pdf_text(name) %>%
+              paste(sep = " ") %>%
+              stringr::str_replace_all( stringr::fixed("\n"), " ") %>%
+              stringr::str_replace_all( stringr::fixed("\r"), " ") %>%
+              stringr::str_replace_all( stringr::fixed("\t"), " ") %>%
+              stringr::str_replace_all( stringr::fixed("\""), " ") %>%
+              paste(sep = " ", collapse = " ") %>%
+              stringr::str_squish() %>%
+              stringr::str_replace_all("- ", "") -> text
+             unlink(name)
+            },
+            error=function(e){
+                as.character(e)
+            }
+            )
 
           cbind(
             mainlist[files$index[[i]],]
             ,data.frame(text = text)
           ) -> list_recov[[i]]
 
-          unlink(name)
-          unlink(paste0("tempfilefolder/",files$files[[i]]))
-
+          unlink(paste0(temp_dir,"/",files$files[[i]]))
         }
-
         list <-  append(list,list_recov )
       }#end recovery corrupted files
 
-
+      list <- Filter(Negate(is.null), list)
     })#endtiming
 
 
@@ -537,12 +554,11 @@ parse_documents <- function(mainlist,use_parallel=TRUE,two_columns_pdf=FALSE){
 
     time_used <- system.time({
 
-      unlink("tempfilefolder", recursive=TRUE)
-      dir.create("tempfilefolder")
+      temp_dir <- tempdir()
+      # unlink("tempfilefolder", recursive=TRUE)
+      # dir.create("tempfilefolder")
       list <- vector(mode="list",length= length(mainlist$document))
       for(i in seq_along(1:length(mainlist$document))){
-
-      tryCatch({
 
           if("mimetype"%in%names(mainlist)){
             type <- mainlist$mimetype[i]
@@ -562,18 +578,21 @@ parse_documents <- function(mainlist,use_parallel=TRUE,two_columns_pdf=FALSE){
 
             },
             error=function(e){
-
               as.character(e)
-
             }
             )
 
             if(stringr::str_detect(text, "is not a Word Document.")){
 
+              list[[i]] <-  tryCatch({
+
               doc <-curl::curl_download(mainlist$document[[i]],
-                                        destfile=  paste0("tempfilefolder/",i,".doc"))
+                                        destfile=  paste0(temp_dir,"/",i,".doc"))
 
               name <- doconv::to_pdf(input = doc,timeout =12000)
+
+              unlink(name)
+              unlink(doc)
 
               pdftools::pdf_text(name) %>%
                 paste(sep = " ") %>%
@@ -585,18 +604,24 @@ parse_documents <- function(mainlist,use_parallel=TRUE,two_columns_pdf=FALSE){
                 stringr::str_squish() %>%
                 stringr::str_replace_all("- ", "") -> text
 
-              unlink(name)
-              unlink(doc)
+              cbind(
+                mainlist[i,]
+                ,data.frame(text =text)
+              )
 
+              },error=function(e){
+                cbind(
+                  mainlist[i,]
+                  ,data.frame(text =as.character(e))
+                )
+              }
+              )
+            }else{
+              cbind(
+                mainlist[i,]
+                ,data.frame(text = text)
+              ) ->  list[[i]]
             }
-
-            unlink(doc)
-
-            cbind(
-              mainlist[i,]
-              ,data.frame(text = text)
-            ) ->  list[[i]]
-
           }
           else if(type=="application/pdf"){
 
@@ -643,7 +668,7 @@ parse_documents <- function(mainlist,use_parallel=TRUE,two_columns_pdf=FALSE){
             ) ->  list[[i]]
 
           }
-        else if (type%in%c("application/rtf")){
+          else if (type%in%c("application/rtf")){
 
           cbind(
             mainlist[i,]
@@ -651,10 +676,10 @@ parse_documents <- function(mainlist,use_parallel=TRUE,two_columns_pdf=FALSE){
           ) ->  list[[i]]
 
         }
-        else if (type%in%c("application/vnd.openxmlformats-officedocument.wordprocessingml.document","binary/octet-stream","application/octet-stream")){
+          else if (type%in%c("application/vnd.openxmlformats-officedocument.wordprocessingml.document","binary/octet-stream","application/octet-stream")){
 
             doc <-curl::curl_download(mainlist$document[[i]],
-                                      destfile=  paste0("tempfilefolder/",i,".docx"))
+                                      destfile=  paste0(temp_dir,"/",i,".docx"))
 
             officer::read_docx(doc) %>%
               officer::docx_summary() %>%
@@ -671,22 +696,12 @@ parse_documents <- function(mainlist,use_parallel=TRUE,two_columns_pdf=FALSE){
               ,data.frame(text = text)
             ) ->  list[[i]]
         }else{
-
           cbind(
             mainlist[i,]
             ,data.frame(text = "Failed: filetype not supported")
           ) ->  list[[i]]
 
         }
-
-          },error=function(e){
-
-            stop("Failed. This document could not be parsed: ",mainlist$document[[i]])
-          }
-        )
-
-        #message(i," ",mainlist$aggregaattype[[i]])
-
       }
 
     })#endtiming
@@ -694,7 +709,7 @@ parse_documents <- function(mainlist,use_parallel=TRUE,two_columns_pdf=FALSE){
 
   }# end parallel false
 
-  unlink("tempfilefolder", recursive=TRUE)
+  unlink(temp_dir, recursive=TRUE)
   message("Made ",length(mainlist$document)," calls in ", round(time_used[[3]],1), " seconds.")
 
   return(list)
@@ -721,7 +736,7 @@ get_written_questions_documents <- function(date_range_from,date_range_to,use_pa
 
   tibble::tibble(list=list ) %>%
     tidyr::unnest(list,keep_empty = TRUE) %>%
-    dplyr::mutate(id_fact = gsub("/","",id_fact)) -> result
+    dplyr::mutate(id_fact = gsub("/","",id_fact))  -> result
 
   return(result)
 
