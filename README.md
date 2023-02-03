@@ -11,7 +11,7 @@ parliament.
 
 ## Installation
 
-You can install the released version of glempar from this repo with:
+You can install the released version of flempar from this repo with:
 
 ``` r
 require(devtools)
