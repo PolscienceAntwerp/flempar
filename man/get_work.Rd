@@ -21,7 +21,7 @@ get_work(
 
 \item{date_range_to}{The end date, should be in format "yyyy-mm-dd".}
 
-\item{fact}{Which fact should be returned, options include "written_questions", "debates", "oral_questions_and_interpellations", "parliamentary_initiatives" or "council_hearings"}
+\item{fact}{Which fact should be returned, options include "written_questions", "debates", "oral_questions_and_interpellations", "parliamentary_initiatives" or "committee_hearings"}
 
 \item{type}{Type of data to be returned, options include "document", "speech" or "details".}
 

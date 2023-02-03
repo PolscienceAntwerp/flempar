@@ -7,7 +7,7 @@ tibble::tribble(
   "debatten",                     "debates",
   "vragen_interpelaties",         "oral_questions_and_interpellations",
   "parlementaire_initiatieven",   "parliamentary_initiatives",
-  "gedachtenwisselingen",         "council_hearings",
+  "gedachtenwisselingen",         "committee_hearings",
   "verzoekschriften",             "petitions"
 ) -> type_conv
 
@@ -298,7 +298,7 @@ use_generalized_query <- function(date_range_from,date_range_to, type = "Schrift
 
   tibble::tibble(list = list) %>%
     tidyr::unnest(list,keep_empty = TRUE) %>%
-    tidyr::unnest(list,keep_empty = TRUE) %>%
+    tidyr::unnest(list,keep_empty = TRUE)%>%
     tidyr::unnest(metatags,keep_empty = TRUE)  %>%
     tidyr::unnest(metatag,keep_empty = TRUE)  %>%
     dplyr::distinct() %>%
@@ -748,8 +748,9 @@ get_written_questions_documents <- function(date_range_from,date_range_to,use_pa
 #' @param date_range_from The start date, should be in format "yyyy-mm-dd".
 #' @param date_range_to The end date, should be in format "yyyy-mm-dd".
 #' @param use_parallel Boolean: should parallel workers be used to call the API?
+#' @param raw Boolean: should the raw object be returned?
 #' @importFrom dplyr %>%
-get_written_questions_details <- function(date_range_from,date_range_to,use_parallel=TRUE){
+get_written_questions_details <- function(date_range_from,date_range_to,use_parallel=TRUE,raw=FALSE){
 
   message("Searching for written questions." )
 
@@ -768,6 +769,13 @@ get_written_questions_details <- function(date_range_from,date_range_to,use_para
                                     query =  list(),
                                     resultVector = NULL,
                                     use_parallel=use_parallel)
+
+  if(raw==TRUE){
+
+    return(result)
+
+  }
+
 
   result %>%
     tibble::tibble(result = ., id_fact = names(result)) %>%
@@ -788,7 +796,10 @@ get_written_questions_details <- function(date_range_from,date_range_to,use_para
                   ,bevraagde_minister_naam=result_minister_naam
                   ,bevraagde_minister_voornaam=result_minister_voornaam
                   ,bevraagde_minister_id=result_minister_id
-                  ,result_procedureverloop) -> result_details
+                  ,result_procedureverloop
+                  ,soort_antwoord=`result_soort-antwoord`
+                  ,tijdig=result_tijdig
+                  ) -> result_details
 
   return(result_details)
 
@@ -802,6 +813,7 @@ get_written_questions_details <- function(date_range_from,date_range_to,use_para
 #' @param use_parallel Boolean: should parallel workers be used to call the API?
 #' @param raw Boolean: should the raw object be returned?
 #' @param extra_via_fact Boolean: also search the underlying endpoint for linked documents? This may return documents not linked to the specific meeting, thus may also include meetings on dates before/after the date range.
+#' @param type Type of data to be returned, options include "document", "speech" or "details".
 #' @export
 #' @importFrom dplyr %>%
 #' @examples
@@ -1164,6 +1176,7 @@ get_sessions_details <- function(date_range_from, date_range_to, plen_comm, type
 #' @param plen_comm Switch between plenary (plen) and commission (comm) sessions.
 #' @param use_parallel Boolean: should parallel workers be used to call the API?
 #' @param raw Boolean: should the raw object be returned?
+#' @param type Type of data to be returned, options include "document", "speech" or "details".
 #' @importFrom dplyr %>%
 get_plen_comm_speech <- function(date_range_from,date_range_to,fact,plen_comm="plen",type="details",use_parallel=TRUE,raw=FALSE) {
 
@@ -1238,6 +1251,7 @@ get_plen_comm_speech <- function(date_range_from,date_range_to,fact,plen_comm="p
 #' @param date_range_from The start date, should be in format "yyyy-mm-dd".
 #' @param date_range_to The end date, should be in format "yyyy-mm-dd".
 #' @param fact The fact to search
+#' @param type Type of data to be returned, options include "document", "speech" or "details".
 #' @param plen_comm Switch to pick between plenary (plen) and commission (comm) sessions.
 #' @param use_parallel Boolean: should parallel workers be used to call the API?
 #' @param raw Boolean: should the raw object be returned?
@@ -1287,7 +1301,6 @@ get_plen_comm_details <- function(date_range_from,date_range_to,fact,plen_comm="
     if(plen_comm=="plen"){
 
     session_object %>%
-      #dplyr::filter(id_fact=="1674868") %>%
       dplyr::left_join(type_conv,by=c("type_activiteit"="type_nl"))%>%
       dplyr::filter(type_eng%in%fact) %>%
       dplyr::distinct() %>%
@@ -1297,14 +1310,32 @@ get_plen_comm_details <- function(date_range_from,date_range_to,fact,plen_comm="
                          tidyr::unnest_longer(result_journaallijn) %>%
                          tidyr::unnest(result_journaallijn,names_sep = "_") %>%
                          tidyr::unnest(result_journaallijn_vergadering,names_sep = "_") %>%
-                         tidyr::unnest_wider(result_thema,names_sep="_")  %>%
+                         tidyr::unnest_wider(result_thema,names_sep="_") %>%
+                         guarantee_field(c("result_contacttype"
+                                           ,"titel"
+                                           ,"onderwerp"
+                                           ,"zittingsjaar"
+                                           ,"result_journaallijn-stemmingen"
+                                           ,"result_numac"
+                                           ,"result_nummer"
+                                           ,"result_staatsblad")) %>%
                          dplyr::select(id_fact=result_id
                                        ,id_verg=result_journaallijn_vergadering_id
                                        ,result_journaallijn_vergadering_datumbegin
                                        ,result_journaallijn_vergadering_datumeinde
-                                       ,dplyr::starts_with("result_thema")) %>%
+                                       ,dplyr::starts_with("result_thema")
+                                       ,contacttype=result_contacttype
+                                       ,titel = result_titel
+                                       ,onderwerp = result_onderwerp
+                                       ,zittingsjaar = result_zittingsjaar
+                                       ,vote= `result_journaallijn-stemmingen`
+                                       ,extra_details=`result_parlementair-initiatief`
+                                       ,numac=result_numac
+                                       ,nr = result_nummer
+                                       ,staatsblad = result_staatsblad
+                                       ) %>%
                          dplyr::distinct() %>%
-                         dplyr::mutate(id_verg=as.character(id_verg)), by=c("id_fact"="id_fact","id_verg"="id_verg"))%>%
+                         dplyr::mutate(id_verg=as.character(id_verg)) , by=c("id_fact"="id_fact","id_verg"="id_verg"))%>%
       dplyr::distinct() %>%
       dplyr::select(id_verg,id_fact,journaallijn_id, dplyr::everything()) -> result
     }
@@ -1320,7 +1351,25 @@ get_plen_comm_details <- function(date_range_from,date_range_to,fact,plen_comm="
                            tidyr::unnest_wider(result,names_sep="_") %>%
                            tidyr::unnest_longer(result_commissiegroepering )  %>%
                            tidyr::unnest(result_commissiegroepering,names_sep = "_") %>%
-                           dplyr::select(id_fact,result_commissiegroepering_vergadering,result_thema) %>%
+                           guarantee_field(c("result_contacttype"
+                                             ,"result_titel"
+                                             ,"result_onderwerp"
+                                             ,"result_zittingsjaar"
+                                             ,"result_journaallijn-stemmingen"
+                                             ,"result_numac"
+                                             ,"result_volgnr"
+                                             ,"result_staatsblad")) %>%
+                           dplyr::select(id_fact
+                                         ,result_commissiegroepering_vergadering
+                                         ,result_thema
+                                         ,numac=result_numac
+                                         ,nr=result_volgnr
+                                         ,zittingsjaar=result_zittingsjaar
+                                         ,vote=`result_journaallijn-stemmingen`
+                                         ,onderwerp=result_onderwerp
+                                         ,titel=result_titel
+                                         ,result_contacttype
+                                         ) %>%
                            tidyr::unnest(result_commissiegroepering_vergadering,names_sep = "_") %>%
                            tidyr::unnest_wider(result_thema,names_sep="_")  %>%
                            tidyr::unnest(result_commissiegroepering_vergadering_commissie,names_sep = "_") %>%
@@ -1330,7 +1379,13 @@ get_plen_comm_details <- function(date_range_from,date_range_to,fact,plen_comm="
                                          ,comm_title=result_commissiegroepering_vergadering_commissie_titel
                                          ,result_commissiegroepering_vergadering_datumbegin
                                          ,result_commissiegroepering_vergadering_datumeinde
-                                         ,dplyr::starts_with("result_thema")) %>%
+                                         ,dplyr::starts_with("result_thema")
+                                         ,numac
+                                         ,nr
+                                         ,zittingsjaar
+                                         ,vote
+                                         ,onderwerp
+                                         ,titel) %>%
                            dplyr::distinct() %>%
                            dplyr::mutate(id_verg=as.character(id_verg),
                                          id_fact=as.integer(id_fact)), by=c("id_fact"="id_fact","id_verg"="id_verg")) %>%
@@ -1365,8 +1420,9 @@ get_plen_comm_details <- function(date_range_from,date_range_to,fact,plen_comm="
                                        ,result_objecttype
                                        ,result_contacttype
                                        ,result_samenhang
-                                       ,result_spreker
-                                       ,result_procedureverloop) %>%
+                                       #,result_spreker
+                                       #,result_procedureverloop
+                                       )  %>%
                          tidyr::unnest(id_verg ) %>%
                          dplyr::distinct() %>%
                          dplyr::mutate(id_verg=as.character(id_verg)
@@ -1393,7 +1449,7 @@ get_plen_comm_details <- function(date_range_from,date_range_to,fact,plen_comm="
                     ,vergadering
                     ) %>%
       tidyr::unnest(c(vergadering),keep_empty = TRUE) %>%
-      guarantee_field(c("commissie","type","subtype","vergaderzaal","video-youtube-id")) %>%
+      guarantee_field(c("commissie","type","subtype")) %>%
       tidyr::unnest_wider("commissie",names_sep = "_") %>%
       guarantee_field(c("commissie_id","commissie_titel","commissie_afkorting")) %>%
       dplyr::select(verg_id=id
@@ -1412,8 +1468,8 @@ get_plen_comm_details <- function(date_range_from,date_range_to,fact,plen_comm="
                     ,commissie_afkorting
                     ,type
                     ,subtype
-                    ,vergaderzaal
-                    ,video_youtube_id=`video-youtube-id`
+                    # ,vergaderzaal
+                    # ,video_youtube_id=`video-youtube-id`
                     ,result_contacttype) %>%
       dplyr::mutate(journaallijn_id = as.character(journaallijn_id)) -> result
 
@@ -1421,12 +1477,14 @@ get_plen_comm_details <- function(date_range_from,date_range_to,fact,plen_comm="
 
   }
 
-  if(fact=="council_hearings"){
+  if(fact=="committee_hearings"){
 
     session_object %>%
       dplyr::left_join(type_conv,by=c("type_activiteit"="type_nl"))%>%
       dplyr::filter(type_eng%in%fact) %>%
       dplyr::distinct() %>%
+      dplyr::rename(naam_document=naam) %>%
+      dplyr::filter(!is.na(document)) %>%
       dplyr::left_join(list %>%
                         tibble::tibble(result = ., id_fact = names(list)) %>%
                         tidyr::unnest_wider(result,names_sep="_") %>%
@@ -1445,7 +1503,8 @@ get_plen_comm_details <- function(date_range_from,date_range_to,fact,plen_comm="
                                       ,result_status
                                       ,result_objecttype
                                       ,result_contacttype
-                                      ,`result_parlementair-initiatief`) %>%
+                                      ,`result_parlementair-initiatief`
+                                      ,base_initiatives= `result_basis-initiatieven`) %>%
                         dplyr::filter(!is.na(id_verg)) %>%
                         tidyr::hoist(result_contacttype,
                                      naam = list("contact", 1, "naam"),
@@ -1495,6 +1554,7 @@ get_plen_comm_details <- function(date_range_from,date_range_to,fact,plen_comm="
 #' @param date_range_from The start date, should be in format "yyyy-mm-dd".
 #' @param date_range_to The end date, should be in format "yyyy-mm-dd".
 #' @param fact The fact to search.
+#' @param type Type of data to be returned, options include "document", "speech" or "details".
 #' @param plen_comm Switch to pick between plenary (plen) and commission (comm) sessions.
 #' @param use_parallel Boolean: should parallel workers be used to call the API?
 #' @param raw Boolean: should the raw object be returned?
@@ -1538,7 +1598,7 @@ get_plen_comm_documents <- function(date_range_from,date_range_to,fact,plen_comm
 #'
 #' @param date_range_from The start date, should be in format "yyyy-mm-dd".
 #' @param date_range_to The end date, should be in format "yyyy-mm-dd".
-#' @param fact Which fact should be returned, options include "written_questions", "debates", "oral_questions_and_interpellations", "parliamentary_initiatives" or "council_hearings"
+#' @param fact Which fact should be returned, options include "written_questions", "debates", "oral_questions_and_interpellations", "parliamentary_initiatives" or "committee_hearings"
 #' @param type Type of data to be returned, options include "document", "speech" or "details".
 #' @param plen_comm Switch to pick between plenary (plen) and commission (comm) sessions.
 #' @param use_parallel Boolean: should parallel workers be used to call the API?
@@ -1564,7 +1624,7 @@ get_work <- function(date_range_from, date_range_to, fact="debates", type="detai
 
   type_list <- c("document","speech","details")
 
-  facts_list <- c("written_questions","debates","oral_questions_and_interpellations","parliamentary_initiatives","council_hearings")
+  facts_list <- c("written_questions","debates","oral_questions_and_interpellations","parliamentary_initiatives","committee_hearings")
 
   #types
   if(!any(type_list %in%type)){
@@ -1592,7 +1652,7 @@ get_work <- function(date_range_from, date_range_to, fact="debates", type="detai
 
   }
 
-  if("plen"%in%plen_comm & "council_hearings"%in%fact){
+  if("plen"%in%plen_comm & "committee_hearings"%in%fact){
 
     stop("You have selected an incompatible combination (Council hearings are not held in plenary sessions).")
 
@@ -1611,7 +1671,7 @@ get_work <- function(date_range_from, date_range_to, fact="debates", type="detai
 
   # Getting data ------------------------------------------------------------
 
-  # writtenquestions -> text
+  # writtenquestions
   if("document"%in%type & "written_questions"%in%fact){
 
     object <- get_written_questions_documents(date_range_from=date_range_from
@@ -1628,18 +1688,19 @@ get_work <- function(date_range_from, date_range_to, fact="debates", type="detai
 
   }
 
-  # writtenquestions -> basic
+  # writtenquestions
   if("details"%in%type & "written_questions"%in%fact){
 
     object <-  get_written_questions_details(date_range_from=date_range_from
                                                ,date_range_to=date_range_to
-                                               ,use_parallel=use_parallel)
+                                               ,use_parallel=use_parallel
+                                               ,raw=raw)
 
     return(object)
 
   }
 
-  # get speech from "debates","oral_questions_and_interpellations","parliamentary_initiatives","council_hearings"
+  # get speech from "debates","oral_questions_and_interpellations","parliamentary_initiatives","committee_hearings"
   if("speech"%in%type & any(facts_list%in%fact)){
 
     object <-  get_plen_comm_speech(date_range_from=date_range_from
@@ -1654,7 +1715,7 @@ get_work <- function(date_range_from, date_range_to, fact="debates", type="detai
 
   }
 
-  # get details from "debates","oral_questions_and_interpellations","parliamentary_initiatives","council_hearings"
+  # get details from "debates","oral_questions_and_interpellations","parliamentary_initiatives","committee_hearings"
   if("details"%in%type & any(facts_list%in%fact)){
 
     object <-  get_plen_comm_details(date_range_from=date_range_from
@@ -1670,7 +1731,7 @@ get_work <- function(date_range_from, date_range_to, fact="debates", type="detai
     return(object)
   }
 
-  # get documents from "debates","oral_questions_and_interpellations","parliamentary_initiatives","council_hearings"
+  # get documents from "debates","oral_questions_and_interpellations","parliamentary_initiatives","committee_hearings"
   if("document"%in%type & any(facts_list%in%fact)){
 
     object <-  get_plen_comm_documents(date_range_from=date_range_from

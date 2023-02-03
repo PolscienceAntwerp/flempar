@@ -21,6 +21,8 @@ get_sessions_details(
 
 \item{plen_comm}{Switch to pick between plenary (plen) and commission (comm) sessions.}
 
+\item{type}{Type of data to be returned, options include "document", "speech" or "details".}
+
 \item{use_parallel}{Boolean: should parallel workers be used to call the API?}
 
 \item{raw}{Boolean: should the raw object be returned?}
