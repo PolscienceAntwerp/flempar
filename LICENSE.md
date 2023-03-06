@@ -1,6 +1,6 @@
 # MIT License
 
-Copyright (c) 2021 Frederik Heylen
+Copyright (c) 2021 Department of Political Science, University of Antwerp
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
