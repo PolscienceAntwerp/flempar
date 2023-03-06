@@ -9,7 +9,7 @@ Authors@R:
     person(given = "Evelien",
            family = "Willems",
            role = c("aut", "cre"),
-           email = "evelien.willems@uantwerpen.be")
+           email = "evelien.willems@uantwerpen.be"),
     person(given = "Wouter",
            family = "Van Dooren", 
            role =  "aut", 
