@@ -5,7 +5,15 @@ Authors@R:
     person(given = "Frederik",
            family = "Heylen",
            role = c("aut", "cre"),
-           email = "frederik.heylen@datamarinier.be" )
+           email = "frederik.heylen@datamarinier.be" ),
+    person(given = "Evelien",
+           family = "Willems",
+           role = c("aut", "cre"),
+           email = "evelien.willems@uantwerpen.be")
+    person(given = "Wouter",
+           family = "Van Dooren", 
+           role =  "aut", 
+           email = "wouter.vandooren@uantwerpen.be")
 Description: flempar is an interface to the API of the Flemish parliament.
 License: MIT + file LICENSE
 Encoding: UTF-8
