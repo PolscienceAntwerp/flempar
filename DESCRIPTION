@@ -1,7 +1,7 @@
 Package: flempar
 Title: Interface to the API of the Flemish Parliament
 Version: 0.0.0.9000
-Authors@R: 
+Authors@R: c(
     person(given = "Frederik",
            family = "Heylen",
            role = c("aut", "cre"),
@@ -13,7 +13,7 @@ Authors@R:
     person(given = "Wouter",
            family = "Van Dooren", 
            role =  "aut", 
-           email = "wouter.vandooren@uantwerpen.be")
+           email = "wouter.vandooren@uantwerpen.be"))
 Description: flempar is an interface to the API of the Flemish parliament.
 License: MIT + file LICENSE
 Encoding: UTF-8
