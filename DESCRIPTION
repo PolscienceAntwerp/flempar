@@ -2,18 +2,9 @@ Package: flempar
 Title: Interface to the API of the Flemish Parliament
 Version: 0.0.0.9000
 Authors@R: c(
-    person(given = "Frederik",
-           family = "Heylen",
-           role = c("aut", "cre"),
-           email = "frederik.heylen@datamarinier.be"),
-    person(given = "Evelien",
-           family = "Willems",
-           role = "aut",
-           email = "evelien.willems@uantwerpen.be"),
-    person(given = "Wouter",
-           family = "Van Dooren", 
-           role =  "aut", 
-           email = "wouter.vandooren@uantwerpen.be"))
+    person("Frederik", "Heylen", email = "frederik.heylen@datamarinier.be", role = c("aut", "cre")),
+    person("Evelien", "Willems", email = "evelien.willems@uantwerpen.be", role = "aut"),
+    person("Wouter", "Van Dooren", email = "wouter.vandooren@uantwerpen.be", role =  "aut"))
 Description: flempar is an interface to the API of the Flemish parliament.
 License: MIT + file LICENSE
 Encoding: UTF-8
@@ -40,3 +31,5 @@ Imports:
 Suggests: 
     testthat (>= 3.0.0)
 Config/testthat/edition: 3
+
+
