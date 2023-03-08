@@ -8,7 +8,7 @@ Authors@R: c(
            email = "frederik.heylen@datamarinier.be"),
     person(given = "Evelien",
            family = "Willems",
-           role = c("aut", "cre"),
+           role = aut",
            email = "evelien.willems@uantwerpen.be"),
     person(given = "Wouter",
            family = "Van Dooren", 
