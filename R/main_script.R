@@ -1671,7 +1671,7 @@ get_work <- function(date_range_from, date_range_to, fact="debates", type="detai
 
   # Getting data ------------------------------------------------------------
 
-  # writtenquestions
+  # written questions
   if("document"%in%type & "written_questions"%in%fact){
 
     object <- get_written_questions_documents(date_range_from=date_range_from
@@ -1688,7 +1688,7 @@ get_work <- function(date_range_from, date_range_to, fact="debates", type="detai
 
   }
 
-  # writtenquestions
+  # written questions
   if("details"%in%type & "written_questions"%in%fact){
 
     object <-  get_written_questions_details(date_range_from=date_range_from
@@ -1931,12 +1931,15 @@ get_mp <- function(selection="current",fact="bio", date_at=NULL, use_parallel=TR
     mainlist %>%
       tibble::tibble(vv = .) %>%
       tidyr::unnest_wider(vv) %>%
-      dplyr::select(id_mp=id,voornaam, achternaam=naam,geslacht,geboortedatum,geboorteplaats,gsmnr,email,website,huidigefractie) %>%
+      dplyr::select(id_mp=id, voornaam, achternaam=naam, geslacht, geboortedatum, geboorteplaats, domicillieadres, gsmnr, email, website, huidigefractie) %>%
       tidyr::unnest_wider(huidigefractie) %>%
-      dplyr::select(id_mp,voornaam, achternaam,geslacht,geboortedatum,geboorteplaats,gsmnr,email,website,party_id=id,party_naam = naam) %>%
+      dplyr::select(id_mp, voornaam, achternaam, geslacht, geboortedatum, geboorteplaats, domicillieadres, gsmnr, email, website, party_id = id, party_naam = naam) %>%
       dplyr::mutate(geboortedatum = lubridate::date(lubridate::ymd_hms(geboortedatum))) %>%
-      tidyr::unnest_wider(email ,names_sep="_")  %>%
-      tidyr::unnest(website ,names_sep="_",keep_empty =TRUE) %>%
+      tidyr::unnest_wider(domicillieadres, names_sep="_") %>%
+      tidyr::unnest_wider(domicillieadres_deelgemeente, names_sep="_") %>%
+      dplyr::select(id_mp, voornaam, achternaam, geslacht, geboortedatum, geboorteplaats, domicillieadres_deelgemeente=domicillieadres_deelgemeente_naam, domicillieadres_postcode=domicillieadres_deelgemeente_postnr, domicillieadres_nr, domicillieadres_straat, domicillieadres_telnr, gsmnr, email, website, party_id, party_naam) %>%
+      tidyr::unnest_wider(email, names_sep="_")  %>%
+      tidyr::unnest(website, names_sep="_",keep_empty =TRUE) %>%
       guarantee_field(c("website_soort","website_value")) %>%
       tidyr::pivot_wider(names_from = website_soort,values_from = website_value) %>%
       dplyr::select(-`NA`) -> result
@@ -2012,18 +2015,24 @@ get_mp <- function(selection="current",fact="bio", date_at=NULL, use_parallel=TR
                     ,voornaam,naam
                     ,huidigefractie
                     ,mandaat_vl=`mandaat-vlaams-parlement`
-                    ,mandaat_vl_andere=`mandaat-vlaams-parlement-andere`
                     ,mandaat_andere=`mandaat-andere`
                     ,kieskring
                     ,deelstaatsenator
-                    ,lidmaatschap) %>%
+                    ,lidmaatschap
+                    ,interesse) %>%
       tidyr::unnest_wider(lidmaatschap, names_sep = "_") %>%
-      tidyr::unnest_wider(huidigefractie, names_sep = "_") -> result
-      #tidyr::unnest(c(`lidmaatschap_datumVan`, `lidmaatschap_fractie`, `lidmaatschap_datumTot`), names_sep = "_",keep_empty = TRUE) %>%
-      #tidyr::unnest(mandaat_vl_andere,keep_empty = TRUE) %>%
-      #tidyr::unnest(mandaat_andere,keep_empty = TRUE)
+      tidyr::unnest(c(`lidmaatschap_datumVan`, `lidmaatschap_fractie`, `lidmaatschap_datumTot`), names_sep = "_",keep_empty = TRUE) %>%
+      dplyr::filter(is.na(lidmaatschap_datumTot)) %>%
+      dplyr::mutate(lidmaatschap_datumVan = lubridate::date(lidmaatschap_datumVan)) %>%
+      tidyr::unnest_wider(huidigefractie, names_sep = "_") %>%
+      tidyr::unnest_wider(interesse, names_sep="_") %>%
+      dplyr::select(-interesse_volgorde, -lidmaatschap_datumTot) %>%
+      tidyr::unnest_wider(interesse_interesse, names_sep="_") %>%
+      dplyr::select(-huidigefractie_kleur, -huidigefractie_logo, -lidmaatschap_fractie_id, -lidmaatschap_fractie_kleur, -lidmaatschap_fractie_logo, -lidmaatschap_fractie_naam, -`lidmaatschap_fractie_zetel-aantal`) %>%
+      dplyr::rename(party_id=huidigefractie_id, party_name=huidigefractie_naam, party_seats=`huidigefractie_zetel-aantal`) -> result
 
     return(result)
+
 
   }
 
