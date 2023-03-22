@@ -1,3 +1,9 @@
+# Members of parliament
+
+test_that("MP", {
+  expect_equal(dim(get_mp(use_parallel =  FALSE)
+  ), c(124,17))
+})
 
 # PLENARY SESSIONS
 # plen - parliamentary_initiatives

@@ -1301,16 +1301,16 @@ get_plen_comm_details <- function(date_range_from,date_range_to,fact,plen_comm="
     if(plen_comm=="plen"){
 
     session_object %>%
-      dplyr::left_join(type_conv,by=c("type_activiteit"="type_nl"))%>%
+      dplyr::left_join(type_conv, by=c("type_activiteit"="type_nl")) %>%
       dplyr::filter(type_eng%in%fact) %>%
       dplyr::distinct() %>%
       dplyr::left_join(list %>%
                          tibble::tibble(result = ., id_fact = names(list)) %>%
-                         tidyr::unnest_wider(result,names_sep="_") %>%
+                         tidyr::unnest_wider(result, names_sep="_") %>%
                          tidyr::unnest_longer(result_journaallijn) %>%
-                         tidyr::unnest(result_journaallijn,names_sep = "_") %>%
-                         tidyr::unnest(result_journaallijn_vergadering,names_sep = "_") %>%
-                         tidyr::unnest_wider(result_thema,names_sep="_") %>%
+                         tidyr::unnest(result_journaallijn, names_sep = "_") %>%
+                         tidyr::unnest(result_journaallijn_vergadering, names_sep = "_") %>%
+                         tidyr::unnest_wider(result_thema, names_sep="_") %>%
                          guarantee_field(c("result_contacttype"
                                            ,"titel"
                                            ,"onderwerp"
@@ -1319,25 +1319,31 @@ get_plen_comm_details <- function(date_range_from,date_range_to,fact,plen_comm="
                                            ,"result_numac"
                                            ,"result_nummer"
                                            ,"result_staatsblad")) %>%
-                         dplyr::select(id_fact=result_id
-                                       ,id_verg=result_journaallijn_vergadering_id
-                                       ,result_journaallijn_vergadering_datumbegin
-                                       ,result_journaallijn_vergadering_datumeinde
+                         dplyr::select(id_fact = result_id
+                                       ,id_verg = result_journaallijn_vergadering_id
+                                       ,session_start_date = result_journaallijn_vergadering_datumbegin
+                                       ,session_end_date = result_journaallijn_vergadering_datumeinde
                                        ,dplyr::starts_with("result_thema")
-                                       ,contacttype=result_contacttype
+                                       ,contacttype = result_contacttype
                                        ,titel = result_titel
                                        ,onderwerp = result_onderwerp
+                                       ,materie = result_materie
                                        ,zittingsjaar = result_zittingsjaar
-                                       ,vote= `result_journaallijn-stemmingen`
-                                       ,extra_details=`result_parlementair-initiatief`
-                                       ,numac=result_numac
+                                       ,vote = `result_journaallijn-stemmingen`
+                                       ,extra_details = `result_parlementair-initiatief`
+                                       ,numac = result_numac
                                        ,nr = result_nummer
                                        ,staatsblad = result_staatsblad
+                                       ,kruispuntbank_url = `result_kruispuntbank-url`
                                        ) %>%
+                         tidyr::unnest_wider(staatsblad, names_sep="_") %>%
+                         tidyr::unnest_wider(vote, names_sep="_") %>%
+                         tidyr::unnest(vote_stemming, names_sep="_") %>%
                          dplyr::distinct() %>%
-                         dplyr::mutate(id_verg=as.character(id_verg)) , by=c("id_fact"="id_fact","id_verg"="id_verg"))%>%
+                         dplyr::mutate(id_verg=as.character(id_verg)), by=c("id_fact"="id_fact","id_verg"="id_verg")) %>%
       dplyr::distinct() %>%
       dplyr::select(id_verg,id_fact,journaallijn_id, dplyr::everything()) -> result
+
     }
 
     if(plen_comm=="comm"){
