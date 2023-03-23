@@ -1393,7 +1393,7 @@ get_plen_comm_details <- function(date_range_from,date_range_to,fact,plen_comm="
   if(fact=="debates"){
 
     session_object %>%
-      dplyr::left_join(type_conv,by=c("type_activiteit"="type_nl"))%>%
+      dplyr::left_join(type_conv, by=c("type_activiteit"="type_nl"))%>%
       dplyr::filter(type_eng%in%fact) %>%
       dplyr::distinct() %>%
       dplyr::left_join(list %>%
@@ -1404,15 +1404,15 @@ get_plen_comm_details <- function(date_range_from,date_range_to,fact,plen_comm="
                          tidyr::unnest_wider(result_journaallijn_vergadering,names_sep="_") %>%
                          dplyr::select(id_fact
                                        ,id_verg=result_journaallijn_vergadering_id
-                                       ,result_titel
-                                       ,result_onderwerp
+                                       ,titel = result_titel
+                                       ,onderwerp = result_onderwerp
+                                       ,session_start_date = result_journaallijn_vergadering_datumbegin
+                                       ,session_end_date = result_journaallijn_vergadering_datumeinde
+                                       ,zittingsjaar = result_zittingsjaar
+                                       ,status = result_status
+                                       ,contacttype = result_contacttype
+                                       ,sprekers = result_spreker
                                        ,dplyr::starts_with("result_thema")
-                                       ,result_zittingsjaar
-                                       ,result_status
-                                       ,result_objecttype
-                                       ,result_contacttype
-                                       ,result_samenhang
-                                       #,result_spreker
                                        #,result_procedureverloop
                                        )  %>%
                          tidyr::unnest(id_verg ) %>%
