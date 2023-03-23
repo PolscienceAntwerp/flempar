@@ -1323,7 +1323,6 @@ get_plen_comm_details <- function(date_range_from,date_range_to,fact,plen_comm="
                                        ,id_verg = result_journaallijn_vergadering_id
                                        ,session_start_date = result_journaallijn_vergadering_datumbegin
                                        ,session_end_date = result_journaallijn_vergadering_datumeinde
-                                       ,dplyr::starts_with("result_thema")
                                        ,contacttype = result_contacttype
                                        ,titel = result_titel
                                        ,onderwerp = result_onderwerp
@@ -1335,7 +1334,8 @@ get_plen_comm_details <- function(date_range_from,date_range_to,fact,plen_comm="
                                        ,nr = result_nummer
                                        ,staatsblad = result_staatsblad
                                        ,kruispuntbank_url = `result_kruispuntbank-url`
-                                       ) %>%
+                                       ,status = result_status
+                                       ,dplyr::starts_with("result_thema")) %>%
                          tidyr::unnest_wider(staatsblad, names_sep="_") %>%
                          tidyr::unnest_wider(vote, names_sep="_") %>%
                          tidyr::unnest(vote_stemming, names_sep="_") %>%
@@ -1354,44 +1354,30 @@ get_plen_comm_details <- function(date_range_from,date_range_to,fact,plen_comm="
         dplyr::distinct() %>%
         dplyr::left_join(list %>%
                            tibble::tibble(result = ., id_fact = names(list)) %>%
-                           tidyr::unnest_wider(result,names_sep="_") %>%
+                           tidyr::unnest_wider(result, names_sep="_") %>%
                            tidyr::unnest_longer(result_commissiegroepering )  %>%
-                           tidyr::unnest(result_commissiegroepering,names_sep = "_") %>%
+                           tidyr::unnest(result_commissiegroepering, names_sep = "_") %>%
                            guarantee_field(c("result_contacttype"
                                              ,"result_titel"
                                              ,"result_onderwerp"
-                                             ,"result_zittingsjaar"
-                                             ,"result_journaallijn-stemmingen"
-                                             ,"result_numac"
-                                             ,"result_volgnr"
-                                             ,"result_staatsblad")) %>%
+                                             ,"result_zittingsjaar")) %>%
+                           tidyr::unnest(result_commissiegroepering_vergadering, names_sep = "_") %>%
+                           tidyr::unnest_wider(result_thema, names_sep="_")  %>%
+                           tidyr::unnest(result_commissiegroepering_vergadering_commissie, names_sep = "_") %>%
                            dplyr::select(id_fact
-                                         ,result_commissiegroepering_vergadering
-                                         ,result_thema
-                                         ,numac=result_numac
-                                         ,nr=result_volgnr
-                                         ,zittingsjaar=result_zittingsjaar
-                                         ,vote=`result_journaallijn-stemmingen`
-                                         ,onderwerp=result_onderwerp
-                                         ,titel=result_titel
-                                         ,result_contacttype
-                                         ) %>%
-                           tidyr::unnest(result_commissiegroepering_vergadering,names_sep = "_") %>%
-                           tidyr::unnest_wider(result_thema,names_sep="_")  %>%
-                           tidyr::unnest(result_commissiegroepering_vergadering_commissie,names_sep = "_") %>%
-                           dplyr::select(id_fact
-                                         ,id_verg=result_commissiegroepering_vergadering_id
+                                         ,id_verg = result_commissiegroepering_vergadering_id
                                          ,id_comm = result_commissiegroepering_vergadering_commissie_id
-                                         ,comm_title=result_commissiegroepering_vergadering_commissie_titel
-                                         ,result_commissiegroepering_vergadering_datumbegin
-                                         ,result_commissiegroepering_vergadering_datumeinde
-                                         ,dplyr::starts_with("result_thema")
-                                         ,numac
-                                         ,nr
-                                         ,zittingsjaar
-                                         ,vote
-                                         ,onderwerp
-                                         ,titel) %>%
+                                         ,comm_title = result_commissiegroepering_vergadering_commissie_titel
+                                         ,session_start_date = result_commissiegroepering_vergadering_datumbegin
+                                         ,session_end_date = result_commissiegroepering_vergadering_datumeinde
+                                         ,zittingsjaar = result_zittingsjaar
+                                         ,onderwerp = result_onderwerp
+                                         ,titel = result_titel
+                                         ,status = result_status
+                                         ,materie = result_materie
+                                         ,result_contacttype
+                                         ,extra_details = `result_parlementair-initiatief`
+                                         ,dplyr::starts_with("result_thema")) %>%
                            dplyr::distinct() %>%
                            dplyr::mutate(id_verg=as.character(id_verg),
                                          id_fact=as.integer(id_fact)), by=c("id_fact"="id_fact","id_verg"="id_verg")) %>%
