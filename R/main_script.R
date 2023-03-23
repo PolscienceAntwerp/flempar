@@ -1428,41 +1428,29 @@ get_plen_comm_details <- function(date_range_from,date_range_to,fact,plen_comm="
 
     list %>%
       tibble::tibble(result = ., id_fact = names(list)) %>%
-      tidyr::unnest_wider(result,names_sep="_") %>%
-      tidyr::unnest_wider(result_thema,names_sep="_")  %>%
-      tidyr::unnest(c(result_journaallijn),keep_empty = TRUE) %>%
-      dplyr::select(id_fact
-                    ,journaallijn_id=id
-                    ,titel=result_titel
-                    ,onderwerp=result_onderwerp
-                    ,dplyr::starts_with("result_thema")
-                    ,zittingsjaar=result_zittingsjaar
-                    ,result_contacttype
-                    ,vergadering
-                    ) %>%
-      tidyr::unnest(c(vergadering),keep_empty = TRUE) %>%
-      guarantee_field(c("commissie","type","subtype")) %>%
-      tidyr::unnest_wider("commissie",names_sep = "_") %>%
-      guarantee_field(c("commissie_id","commissie_titel","commissie_afkorting")) %>%
+      tidyr::unnest_wider(result, names_sep="_") %>%
+      tidyr::unnest_wider(result_thema, names_sep="_")  %>%
+      tidyr::unnest(c(result_journaallijn), keep_empty = TRUE) %>%
+      tidyr::unnest_wider(vergadering, names_sep="_") %>%
+      guarantee_field(c("commissie", "type","subtype")) %>%
+      tidyr::unnest_wider("commissie", names_sep = "_") %>%
+      guarantee_field(c("commissie_id", "commissie_titel", "commissie_afkorting")) %>%
       dplyr::select(verg_id=id
                     ,id_fact
-                    ,journaallijn_id
-                    ,titel
-                    ,onderwerp
-                    ,dplyr::starts_with("result_thema")
-                    ,zittingsjaar
-                    ,datumbegin
-                    ,datumeinde
-                    # ,omschrijving
-                    # ,omschrijving_kort=`omschrijving-kort`
+                    ,journaallijn_id = id
+                    ,titel = result_titel
+                    ,onderwerp = result_onderwerp
+                    ,zittingsjaar = result_zittingsjaar
+                    ,agenda_date = vergadering_datumagendering
+                    ,session_date_start = vergadering_datumbegin
+                    ,session_date_end = vergadering_datumeinde
                     ,commissie_id
                     ,commissie_titel
                     ,commissie_afkorting
                     ,type
                     ,subtype
-                    # ,vergaderzaal
-                    # ,video_youtube_id=`video-youtube-id`
-                    ,result_contacttype) %>%
+                    ,result_contacttype
+                    ,dplyr::starts_with("result_thema")) %>%
       dplyr::mutate(journaallijn_id = as.character(journaallijn_id)) -> result
 
     return(result)
