@@ -1431,10 +1431,10 @@ get_plen_comm_details <- function(date_range_from,date_range_to,fact,plen_comm="
       tidyr::unnest_wider(result, names_sep="_") %>%
       tidyr::unnest_wider(result_thema, names_sep="_")  %>%
       tidyr::unnest(c(result_journaallijn), keep_empty = TRUE) %>%
-      tidyr::unnest_wider(vergadering, names_sep="_") %>%
-      guarantee_field(c("commissie", "type","subtype")) %>%
-      tidyr::unnest_wider("commissie", names_sep = "_") %>%
-      guarantee_field(c("commissie_id", "commissie_titel", "commissie_afkorting")) %>%
+      tidyr::unnest(c(vergadering), names_sep="_", keep_empty = TRUE) %>%
+      guarantee_field(c("result_commissie", "vergadering_type","vergadering_subtype")) %>%
+      tidyr::unnest_wider(result_commissie, names_sep = "_") %>%
+      guarantee_field(c("result_commissie_id", "result_commissie_titel", "result_commissie_afkorting")) %>%
       dplyr::select(verg_id=id
                     ,id_fact
                     ,journaallijn_id = id
@@ -1444,11 +1444,11 @@ get_plen_comm_details <- function(date_range_from,date_range_to,fact,plen_comm="
                     ,agenda_date = vergadering_datumagendering
                     ,session_date_start = vergadering_datumbegin
                     ,session_date_end = vergadering_datumeinde
-                    ,commissie_id
-                    ,commissie_titel
-                    ,commissie_afkorting
-                    ,type
-                    ,subtype
+                    ,commissie_id = result_commissie_id
+                    ,commissie_titel = result_commissie_titel
+                    ,commissie_afkorting = result_commissie_afkorting
+                    ,type = vergadering_type
+                    ,subtype = vergadering_subtype
                     ,result_contacttype
                     ,dplyr::starts_with("result_thema")) %>%
       dplyr::mutate(journaallijn_id = as.character(journaallijn_id)) -> result
