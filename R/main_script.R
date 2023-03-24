@@ -1473,15 +1473,15 @@ get_plen_comm_details <- function(date_range_from,date_range_to,fact,plen_comm="
                         tidyr::unnest(cols = c(result_procedureverloop_vergadering),keep_empty = TRUE) %>%
                         dplyr::select(id_fact
                                       ,id_verg = id
-                                      ,datumbegin
-                                      ,datumeinde
+                                      ,session_start_date = datumbegin
+                                      ,session_end_date = datumeinde
                                       ,omschrijving
-                                      ,result_titel
-                                      ,result_onderwerp
+                                      ,titel = result_titel
+                                      ,onderwerp = result_onderwerp
                                       ,dplyr::starts_with("result_thema")
-                                      ,result_zittingsjaar
-                                      ,result_status
-                                      ,result_objecttype
+                                      ,zittingsjaar = result_zittingsjaar
+                                      ,status = result_status
+                                      #,result_objecttype
                                       ,result_contacttype
                                       ,`result_parlementair-initiatief`
                                       ,base_initiatives= `result_basis-initiatieven`) %>%
@@ -1493,7 +1493,8 @@ get_plen_comm_details <- function(date_range_from,date_range_to,fact,plen_comm="
                                      id_mp = list("contact", 1, "id")) %>%
                         dplyr::distinct() %>%
                         dplyr::mutate(id_verg=as.character(id_verg),
-                                      id_fact = as.integer(id_fact)), by=c("id_fact"="id_fact","id_verg"="id_verg")) -> result
+                                      id_fact = as.integer(id_fact)), by=c("id_fact"="id_fact","id_verg"="id_verg")) %>%
+                        dplyr::mutate(omschrijving = gsub("<(.|\n)*?>", "", omschrijving)) -> result
 
     return(result)
 
