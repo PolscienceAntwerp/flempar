@@ -364,11 +364,9 @@ parse_documents <- function(mainlist,use_parallel=TRUE,two_columns_pdf=FALSE){
     cl <- parallel::makeCluster(parallel::detectCores() - 1)
     doParallel::registerDoParallel(cl)
     on.exit(parallel::stopCluster(cl))
-    #on.exit(unlink(temp_dir, recursive=TRUE))
-    temp_dir <- tempdir()
-    #dir.create("tempfilefolder")
-
-    
+    dir.create(paste0(tempdir(),"/parse_documents"))
+    temp_dir <- paste0(tempdir(),"/parse_documents")
+ 
     time_used <- system.time({
 
       list <- foreach::foreach(i = seq_along(1:length(mainlist$document)),
@@ -554,9 +552,9 @@ parse_documents <- function(mainlist,use_parallel=TRUE,two_columns_pdf=FALSE){
 
     time_used <- system.time({
 
-      temp_dir <- tempdir()
-      # unlink("tempfilefolder", recursive=TRUE)
-      # dir.create("tempfilefolder")
+      dir.create(paste0(tempdir(),"/parse_documents"))
+      temp_dir <- paste0(tempdir(),"/parse_documents")
+      
       list <- vector(mode="list",length= length(mainlist$document))
       for(i in seq_along(1:length(mainlist$document))){
 
