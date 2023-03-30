@@ -364,11 +364,11 @@ parse_documents <- function(mainlist,use_parallel=TRUE,two_columns_pdf=FALSE){
     cl <- parallel::makeCluster(parallel::detectCores() - 1)
     doParallel::registerDoParallel(cl)
     on.exit(parallel::stopCluster(cl))
-    on.exit(unlink(temp_dir, recursive=TRUE))
+    #on.exit(unlink(temp_dir, recursive=TRUE))
     temp_dir <- tempdir()
     #dir.create("tempfilefolder")
 
-    # -> problem still here
+    
     time_used <- system.time({
 
       list <- foreach::foreach(i = seq_along(1:length(mainlist$document)),
@@ -527,7 +527,7 @@ parse_documents <- function(mainlist,use_parallel=TRUE,two_columns_pdf=FALSE){
               paste(sep = " ", collapse = " ") %>%
               stringr::str_squish() %>%
               stringr::str_replace_all("- ", "") -> text
-             unlink(name)
+             
             },
             error=function(e){
                 as.character(e)
@@ -538,7 +538,7 @@ parse_documents <- function(mainlist,use_parallel=TRUE,two_columns_pdf=FALSE){
             mainlist[files$index[[i]],]
             ,data.frame(text = text)
           ) -> list_recov[[i]]
-
+          unlink(name)
           unlink(paste0(temp_dir,"/",files$files[[i]]))
         }
         list <-  append(list,list_recov )
