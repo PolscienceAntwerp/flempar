@@ -19,3 +19,8 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+# Open Data Flemish Parliament
+
+The flempar R-package retrieves public sector information obtained under the model licence for free reuse Flanders v1.0
+The full license can be consulted here: https://www.vlaamsparlement.be/nl/parlementair-werk/dossiers/dossiers/open-data
