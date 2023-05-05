@@ -22,5 +22,5 @@ SOFTWARE.
 
 # Open Data Flemish Parliament
 
-The flempar R-package retrieves public sector information obtained under the model licence for free reuse Flanders v1.0
+The flempar R-package retrieves public sector information obtained under the model license for free reuse Flanders v1.0.
 The full license can be consulted here: https://www.vlaamsparlement.be/nl/parlementair-werk/dossiers/dossiers/open-data
