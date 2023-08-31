@@ -18,11 +18,12 @@ knitr::opts_chunk$set(
 <!-- badges: start -->
 <!-- badges: end -->
 
-The package flempar is an interface to the API of the Flemish parliament.
+The package flempar is an interface to the API of the Flemish
+parliament.
 
 ## Installation
 
-You can install the released version of glempar from this repo with:
+You can install the released version of flempar from this repo with:
 
 ``` r
 require(devtools)
@@ -31,7 +32,7 @@ install_github("PolscienceAntwerp/flempar")
 
 ## Usage
 
-Under an open data policy,the Flemish parliament publishes data on
+Under an open data policy, the Flemish parliament publishes data on
 parliamentary proceedings via API. This data source contains a large
 amount of data on MPs, legislative work, voting and parliamentary
 documents.
