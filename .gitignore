@@ -1,3 +1,7 @@
 .Rproj.user
 testing.R
 packrat/lib*/
+**/desktop.ini
+Flempar.Rproj
+.Rhistory
+.RData
