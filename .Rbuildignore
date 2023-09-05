@@ -4,3 +4,4 @@
 ^README\.Rmd$
 ^packrat/
 ^\.Rprofile$
+^data-raw$
