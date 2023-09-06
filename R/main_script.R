@@ -1027,7 +1027,6 @@ get_sessions_details <- function(date_range_from, date_range_to, plen_comm, type
       message("Getting the extra details by checking the fact endpoints.")
       result_joined %>%
         dplyr::select(fact_link) %>%
-        # dplyr::filter(fact_link=="http://ws.vlpar.be/e/opendata/vi/276270/verslag") %>%
         dplyr::mutate(verslag = stringr::str_extract(fact_link, "verslag")) %>%
         dplyr::filter(is.na(verslag)) %>%
         dplyr::select(-verslag) %>%
@@ -1238,7 +1237,8 @@ get_plen_comm_details <- function(date_range_from, date_range_to, fact, plen_com
             "result_journaallijn-stemmingen",
             "result_numac",
             "result_nummer",
-            "result_staatsblad"
+            "result_staatsblad",
+            "result_kruispuntbank-url"
           )) %>%
           dplyr::select(
             id_fact = result_id,
@@ -1356,7 +1356,13 @@ get_plen_comm_details <- function(date_range_from, date_range_to, fact, plen_com
       tidyr::unnest(c(vergadering), names_sep = "_", keep_empty = TRUE) %>%
       guarantee_field(c("result_commissie", "vergadering_type", "vergadering_subtype")) %>%
       tidyr::unnest_wider(result_commissie, names_sep = "_") %>%
-      guarantee_field(c("result_commissie_id", "result_commissie_titel", "result_commissie_afkorting")) %>%
+      guarantee_field(c("id",
+                        "result_commissie_id",
+                        "result_commissie_titel",
+                        "result_commissie_afkorting",
+                        "vergadering_datumagendering",
+                        "vergadering_datumbegin",
+                        "vergadering_datumeinde")) %>%
       dplyr::select(
         verg_id = id,
         id_fact,
