@@ -1,4 +1,3 @@
-
 #' Call an API once
 #'
 #' @param URL endpoint url
@@ -19,7 +18,6 @@ call_api_once <- function(URL, path = NULL, query, ...) {
     response <-
       httr::GET(file.path(URL, path, ...), query = query, httr::accept_json())
   }
-
   if (any(as.numeric(httr::status_code(response)) %in% 200:204)) {
   } else {
     stop("Error: ", httr::http_status(response)[[1]])
@@ -337,310 +335,181 @@ parse_documents <- function(mainlist, use_parallel = TRUE, two_columns_pdf = FAL
     cl <- parallel::makeCluster(parallel::detectCores() - 1)
     doParallel::registerDoParallel(cl)
     on.exit(parallel::stopCluster(cl))
-    dir.create(paste0(tempdir(),"/parse_documents"))
-    temp_dir <- paste0(tempdir(),"/parse_documents")
- 
-    time_used <- system.time({
-      list <- foreach::foreach(
-        i = seq_along(1:length(mainlist$document)),
-        .packages = c("dplyr", "purrr", "httr", "jsonlite", "pdftools", "stringr", "antiword", "doconv", "officer"),
-        .export = c("read_text"),
-        .errorhandling = c("pass")
-      ) %dopar% {
-        tryCatch(
-          {
-            if ("mimetype" %in% names(mainlist)) {
-              type <- mainlist$mimetype[i]
-            } else {
-              type <- httr::GET(mainlist$document[[i]])$headers$`content-type`
-            }
+    temp_dir <- tempdir()
 
-            if (type == "application/msword") {
-              text <- tryCatch(
-                {
-                  antiword::antiword(mainlist$document[[i]]) %>%
+    time_used <- system.time(
+      {
+        list <- foreach::foreach(
+          i = seq_along(1:length(mainlist$document)),
+          .packages = c("dplyr", "purrr", "httr", "jsonlite", "pdftools", "stringr", "antiword", "doconv", "officer"),
+          .export = c("read_text"),
+          .errorhandling = c("pass")
+        ) %dopar% {
+          tryCatch(
+            {
+              if ("mimetype" %in% names(mainlist)) {
+                type <- mainlist$mimetype[i]
+              } else {
+                type <- httr::GET(mainlist$document[[i]])$headers$`content-type`
+              }
+
+              if (type == "application/msword") {
+                text <- tryCatch(
+                  {
+                    antiword::antiword(mainlist$document[[i]]) %>%
+                      stringr::str_replace_all(stringr::fixed("\n"), " ") %>%
+                      stringr::str_replace_all(stringr::fixed("\r"), " ") %>%
+                      stringr::str_replace_all(stringr::fixed("\t"), " ") %>%
+                      stringr::str_replace_all(stringr::fixed("\""), " ")
+                  },
+                  error = function(e) {
+                    as.character(e)
+                  }
+                )
+                if (stringr::str_detect(text, "is not a Word Document.")) {
+                  doc <- curl::curl_download(mainlist$document[[i]],
+                    destfile = paste0(temp_dir, "/", i, ".doc")
+                  )
+                  rm(doc)
+                } else {
+                  cbind(
+                    mainlist[i, ],
+                    data.frame(text = text)
+                  )
+                }
+              }
+              else if (type == "application/pdf") {
+                if (two_columns_pdf == TRUE) {
+                  txt <- pdftools::pdf_text(mainlist$document[[i]])
+                  result <- ""
+                  for (j in 1:length(txt)) {
+                    page <- txt[j]
+                    t1 <- unlist(strsplit(page, "\n"))
+                    maxSize <- max(nchar(t1))
+                    t1 <- paste0(t1, strrep(" ", maxSize - nchar(t1)))
+                    result <- append(result, read_text(t1))
+                  }
+                  result %>%
+                    paste(sep = " ") %>%
                     stringr::str_replace_all(stringr::fixed("\n"), " ") %>%
                     stringr::str_replace_all(stringr::fixed("\r"), " ") %>%
                     stringr::str_replace_all(stringr::fixed("\t"), " ") %>%
-                    stringr::str_replace_all(stringr::fixed("\""), " ")
-                },
-                error = function(e) {
-                  as.character(e)
+                    stringr::str_replace_all(stringr::fixed("\""), " ") %>%
+                    paste(sep = " ", collapse = " ") %>%
+                    stringr::str_squish() %>%
+                    stringr::str_replace_all("- ", "") -> text
                 }
-              )
-              if (stringr::str_detect(text, "is not a Word Document.")) {
-                doc <- curl::curl_download(mainlist$document[[i]],
-                  destfile = paste0(temp_dir, "/", i, ".doc")
-                )
-                rm(doc)
-              } else {
+                else {
+                  pdftools::pdf_text(mainlist$document[[i]]) %>%
+                    paste(sep = " ") %>%
+                    stringr::str_replace_all(stringr::fixed("\n"), " ") %>%
+                    stringr::str_replace_all(stringr::fixed("\r"), " ") %>%
+                    stringr::str_replace_all(stringr::fixed("\t"), " ") %>%
+                    stringr::str_replace_all(stringr::fixed("\""), " ") %>%
+                    paste(sep = " ", collapse = " ") %>%
+                    stringr::str_squish() %>%
+                    stringr::str_replace_all("- ", "") -> text
+                }
                 cbind(
                   mainlist[i, ],
                   data.frame(text = text)
                 )
-              }
-            } else if (type == "application/pdf") {
-              if (two_columns_pdf == TRUE) {
-                txt <- pdftools::pdf_text(mainlist$document[[i]])
-                result <- ""
-                for (j in 1:length(txt)) {
-                  page <- txt[j]
-                  t1 <- unlist(strsplit(page, "\n"))
-                  maxSize <- max(nchar(t1))
-                  t1 <- paste0(t1, strrep(" ", maxSize - nchar(t1)))
-                  result <- append(result, read_text(t1))
-                }
-                result %>%
-                  paste(sep = " ") %>%
-                  stringr::str_replace_all(stringr::fixed("\n"), " ") %>%
-                  stringr::str_replace_all(stringr::fixed("\r"), " ") %>%
-                  stringr::str_replace_all(stringr::fixed("\t"), " ") %>%
-                  stringr::str_replace_all(stringr::fixed("\""), " ") %>%
+              } else if (type == "application/rtf") {
+                cbind(
+                  mainlist[i, ],
+                  data.frame(text = "RTF not supported")
+                )
+              } else if (type %in% c("application/vnd.openxmlformats-officedocument.wordprocessingml.document", "binary/octet-stream", "application/octet-stream")) {
+                doc <- curl::curl_download(mainlist$document[[i]],
+                  destfile = paste0(temp_dir, "/", i, ".docx")
+                )
+
+                officer::read_docx(doc) %>%
+                  officer::docx_summary() %>%
+                  dplyr::filter(content_type == "paragraph") %>%
+                  dplyr::select(text) %>%
                   paste(sep = " ", collapse = " ") %>%
                   stringr::str_squish() %>%
-                  stringr::str_replace_all("- ", "") -> text
+                  stringr::str_replace_all(stringr::fixed("\""), " ") %>%
+                  stringr::str_replace_all(stringr::fixed("c("), " ") -> text
+                unlink(doc)
+                cbind(
+                  mainlist[i, ],
+                  data.frame(text = text)
+                )
               } else {
-                pdftools::pdf_text(mainlist$document[[i]]) %>%
-                  paste(sep = " ") %>%
-                  stringr::str_replace_all(stringr::fixed("\n"), " ") %>%
-                  stringr::str_replace_all(stringr::fixed("\r"), " ") %>%
-                  stringr::str_replace_all(stringr::fixed("\t"), " ") %>%
-                  stringr::str_replace_all(stringr::fixed("\""), " ") %>%
-                  paste(sep = " ", collapse = " ") %>%
-                  stringr::str_squish() %>%
-                  stringr::str_replace_all("- ", "") -> text
+                cbind(
+                  mainlist[i, ],
+                  data.frame(text = "Failed: filetype not supported")
+                )
               }
-              cbind(
-                mainlist[i, ],
-                data.frame(text = text)
-              )
-            } else if (type == "application/rtf") {
-              cbind(
-                mainlist[i, ],
-                data.frame(text = "RTF not supported")
-              )
-            } else if (type %in% c("application/vnd.openxmlformats-officedocument.wordprocessingml.document", "binary/octet-stream", "application/octet-stream")) {
-              doc <- curl::curl_download(mainlist$document[[i]],
-                destfile = paste0(temp_dir, "/", i, ".docx")
-              )
-
-              officer::read_docx(doc) %>%
-                officer::docx_summary() %>%
-                dplyr::filter(content_type == "paragraph") %>%
-                dplyr::select(text) %>%
-                paste(sep = " ", collapse = " ") %>%
-                stringr::str_squish() %>%
-                stringr::str_replace_all(stringr::fixed("\""), " ") %>%
-                stringr::str_replace_all(stringr::fixed("c("), " ") -> text
-              unlink(doc)
-              cbind(
-                mainlist[i, ],
-                data.frame(text = text)
-              )
-            } else {
-              cbind(
-                mainlist[i, ],
-                data.frame(text = "Failed: filetype not supported")
-              )
-            }
-          },
-          error = function(e) {
-            cbind(
-              mainlist[i, ],
-              data.frame(text = "Error in parallel")
-            )
-          }
-        )
-      }
-
-      tibble::tibble(files = list.files(temp_dir)) %>%
-        dplyr::mutate(docfiles = stringr::str_detect(files, ".doc")) %>%
-        dplyr::filter(docfiles == TRUE) %>%
-        dplyr::mutate(index = stringr::str_extract(files, "[0-9]+")) -> files
-
-                                if(type=="application/msword"){
-
-                                  text <-  tryCatch({
-
-                                    antiword::antiword(mainlist$document[[i]]) %>%
-                                      stringr::str_replace_all( stringr::fixed("\n"), " ") %>%
-                                      stringr::str_replace_all( stringr::fixed("\r"), " ") %>%
-                                      stringr::str_replace_all( stringr::fixed("\t"), " ") %>%
-                                      stringr::str_replace_all( stringr::fixed("\""), " ")
-
-                                  },
-                                  error=function(e){
-
-                                    as.character(e)
-
-                                  }
-                                  )
-
-                                  if(stringr::str_detect(text, "is not a Word Document.")){
-
-                                    doc <-curl::curl_download(mainlist$document[[i]],
-                                                              destfile=  paste0(temp_dir,"/",i,".doc"))
-
-                                    rm(doc)
-
-                                  }else{
-                                    cbind(
-                                      mainlist[i,]
-                                      ,data.frame(text = text)
-                                    )
-                                  }
-                                }
-                                 else if(type=="application/pdf"){
-
-                                   if(two_columns_pdf == TRUE){
-
-                                     txt <- pdftools::pdf_text(mainlist$document[[i]])
-                                     result <- ''
-                                     for (j in 1:length(txt)) {
-                                       page <- txt[j]
-                                       t1 <- unlist(strsplit(page, "\n"))
-                                       maxSize <- max(nchar(t1))
-                                       t1 <- paste0(t1,strrep(" ", maxSize-nchar(t1)))
-                                       result = append(result,read_text(t1))
-                                     }
-                                     result %>%
-                                       paste(sep = " ") %>%
-                                       stringr::str_replace_all( stringr::fixed("\n"), " ") %>%
-                                       stringr::str_replace_all( stringr::fixed("\r"), " ") %>%
-                                       stringr::str_replace_all( stringr::fixed("\t"), " ") %>%
-                                       stringr::str_replace_all( stringr::fixed("\""), " ") %>%
-                                       paste(sep = " ", collapse = " ") %>%
-                                       stringr::str_squish() %>%
-                                       stringr::str_replace_all("- ", "") -> text
-
-                                   }else{
-
-                                   pdftools::pdf_text(mainlist$document[[i]]) %>%
-                                     paste(sep = " ") %>%
-                                     stringr::str_replace_all( stringr::fixed("\n"), " ") %>%
-                                     stringr::str_replace_all( stringr::fixed("\r"), " ") %>%
-                                     stringr::str_replace_all( stringr::fixed("\t"), " ") %>%
-                                     stringr::str_replace_all( stringr::fixed("\""), " ") %>%
-                                     paste(sep = " ", collapse = " ") %>%
-                                     stringr::str_squish() %>%
-                                     stringr::str_replace_all("- ", "") -> text
-
-                                   }
-
-                                   cbind(
-                                     mainlist[i,]
-                                     ,data.frame(text = text)
-                                   )}
-                                 else if (type%in%c("application/rtf")){
-
-                                   cbind(
-                                     mainlist[i,]
-                                     ,data.frame(text = "RTF not supported")
-                                   )
-
-                                   }
-                                 else if (type%in%c("application/vnd.openxmlformats-officedocument.wordprocessingml.document","binary/octet-stream","application/octet-stream")){
-
-                                   doc <-curl::curl_download(mainlist$document[[i]],
-                                                       destfile=  paste0(temp_dir,"/",i,".docx"))
-
-                                   officer::read_docx(doc) %>%
-                                     officer::docx_summary() %>%
-                                     dplyr::filter(content_type == "paragraph") %>%
-                                     dplyr::select(text) %>%
-                                     paste(sep = " ", collapse = " ") %>%
-                                     stringr::str_squish() %>%
-                                     stringr::str_replace_all( stringr::fixed("\""), " ") %>%
-                                     stringr::str_replace_all( stringr::fixed("c("), " ") -> text
-
-                                   unlink(doc)
-
-                                   cbind(
-                                     mainlist[i,]
-                                     ,data.frame(text = text)
-                                   )
-                                 } else{
-
-                                   cbind(
-                                     mainlist[i,]
-                                     ,data.frame(text = "Failed: filetype not supported")
-                                   )
-
-                                 }
-
-                                 },#
-                                error=function(e){
-                                  cbind(
-                                    mainlist[i,]
-                                    ,data.frame(text =  "Error in parallel")
-                                  )
-                                }
-                                )
-
-                               }#endparallel
-
-      tibble::tibble(files=list.files(temp_dir))%>%
-        dplyr::mutate(docfiles=stringr::str_detect(files,".doc")) %>%
-        dplyr::filter(docfiles==TRUE) %>%
-        dplyr::mutate(index = stringr::str_extract(files,"[0-9]+"))  -> files
-
-      if(!nrow(files)==0){
-
-        list_recov <- vector(mode="list",length= length(files$files))
-        for(i in seq_along(1:length(files$files))){
-
-         text <- tryCatch({
-            name <- doconv::to_pdf(input = paste0(temp_dir,"/",files$files[[i]]),timeout =12000)
-
-             pdftools::pdf_text(name) %>%
-              paste(sep = " ") %>%
-              stringr::str_replace_all( stringr::fixed("\n"), " ") %>%
-              stringr::str_replace_all( stringr::fixed("\r"), " ") %>%
-              stringr::str_replace_all( stringr::fixed("\t"), " ") %>%
-              stringr::str_replace_all( stringr::fixed("\""), " ") %>%
-              paste(sep = " ", collapse = " ") %>%
-              stringr::str_squish() %>%
-              stringr::str_replace_all("- ", "") -> text
-             
             },
             error = function(e) {
-              as.character(e)
+              message("this2")
+              cbind(
+                mainlist[i, ],
+                data.frame(text = "Error in parallel")
+              )
             }
           )
-          cbind(
-            mainlist[files$index[[i]], ],
-            data.frame(text = text)
-          ) -> list_recov[[i]]
-          if(exists("name")){
-            unlink(name)
-          }
-          unlink(paste0(temp_dir, "/", files$files[[i]]))
         }
-        list <- append(list, list_recov)
+      })
+  } # endparallel
+
+  tibble::tibble(files = list.files(temp_dir)) %>%
+    dplyr::mutate(docfiles = stringr::str_detect(files, ".doc")) %>%
+    dplyr::filter(docfiles == TRUE) %>%
+    dplyr::mutate(index = stringr::str_extract(files, "[0-9]+")) -> files
+
+  if (!nrow(files) == 0) {
+    list_recov <- vector(mode = "list", length = length(files$files))
+    for (i in seq_along(1:length(files$files))) {
+      text <- tryCatch(
+        {
+          name <- doconv::to_pdf(input = paste0(temp_dir, "/", files$files[[i]]), timeout = 12000)
+
+          pdftools::pdf_text(name) %>%
+            paste(sep = " ") %>%
+            stringr::str_replace_all(stringr::fixed("\n"), " ") %>%
+            stringr::str_replace_all(stringr::fixed("\r"), " ") %>%
+            stringr::str_replace_all(stringr::fixed("\t"), " ") %>%
+            stringr::str_replace_all(stringr::fixed("\""), " ") %>%
+            paste(sep = " ", collapse = " ") %>%
+            stringr::str_squish() %>%
+            stringr::str_replace_all("- ", "") -> text
+        },
+        error = function(e) {
+          as.character(e)
+        }
+      )
+      cbind(
+        mainlist[files$index[[i]], ],
+        data.frame(text = text)
+      ) -> list_recov[[i]]
+      if (exists("name")) {
+        unlink(name)
       }
-      list <- Filter(Negate(is.null), list)
-    })
+      unlink(paste0(temp_dir, "/", files$files[[i]]))
+    }
+    list <- append(list, list_recov)
   }
+  list <- Filter(Negate(is.null), list)
 
   if (use_parallel == FALSE) {
     time_used <- system.time({
+      temp_dir <- tempdir()
 
-      dir.create(paste0(tempdir(),"/parse_documents"))
-      temp_dir <- paste0(tempdir(),"/parse_documents")
-      
-      list <- vector(mode="list",length= length(mainlist$document))
-      for(i in seq_along(1:length(mainlist$document))){
+      list <- vector(mode = "list", length = length(mainlist$document))
+      for (i in seq_along(1:length(mainlist$document))) {
+        if ("mimetype" %in% names(mainlist)) {
+          type <- mainlist$mimetype[i]
+        } else {
+          type <- httr::GET(mainlist$document[[i]])$headers$`content-type`
+        }
 
-          if("mimetype"%in%names(mainlist)){
-            type <- mainlist$mimetype[i]
-          }else{
-            type <-  httr::GET(mainlist$document[[i]])$headers$`content-type`
-          }
-
-          if(type=="application/msword"){
-
-            text <-  tryCatch({
-
+        if (type == "application/msword") {
+          text <- tryCatch(
+            {
               antiword::antiword(mainlist$document[[i]]) %>%
                 stringr::str_replace_all(stringr::fixed("\n"), " ") %>%
                 stringr::str_replace_all(stringr::fixed("\r"), " ") %>%
@@ -1038,7 +907,7 @@ get_sessions_details <- function(date_range_from, date_range_to, plen_comm, type
       tidyr::unnest(cols = c(value_id, value_contacttype, value_document, value_link, value_objecttype, value_onderwerp, value_titel, value_filewebpath, value_zittingsjaar), names_sep = "_", keep_empty = TRUE) %>%
       tidyr::unnest_wider(value_link, names_sep = "_") %>%
       tidyr::unnest_wider(verg_commissiehandelingen, names_sep = "_") %>%
-      guarantee_field(c("verg_commissiehandelingen_pdffilewebpath","value_link_href","value_objecttype_naam","value_document_bestandsnaam")) %>%
+      guarantee_field(c("verg_commissiehandelingen_pdffilewebpath", "value_link_href", "value_objecttype_naam", "value_document_bestandsnaam")) %>%
       dplyr::select(id_verg,
         id_fact = value_id,
         fact_link = value_link_href,
@@ -1150,7 +1019,7 @@ get_sessions_details <- function(date_range_from, date_range_to, plen_comm, type
       ) %>%
       dplyr::distinct() -> result_joined
 
-    if (nrow(result_joined)==0) {
+    if (nrow(result_joined) == 0) {
       message("Query resulted in empty dataframe, usually means nothing was found, try to broaden your search query.")
     }
 
