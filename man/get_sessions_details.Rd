@@ -35,10 +35,11 @@ Get the details of sessions
 \examples{
 \dontrun{
 
-get_sessions_details(date_range_from="2021-09-01"
-                     , date_range_to="2021-12-31"
-                     , plen_comm = "plen"
-                     , use_parallel=TRUE)
-
+get_sessions_details(
+  date_range_from = "2021-09-01",
+  date_range_to = "2021-12-31",
+  plen_comm = "plen",
+  use_parallel = TRUE
+)
 }
 }

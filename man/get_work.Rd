@@ -39,14 +39,14 @@ get_work(
 Get data from the Flemish parliament
 }
 \examples{
-
 \dontrun{
 
- get_work(date_range_from="2022-01-20",
-             date_range_to="2022-01-31",
-             type="document",
-             fact="written_questions",
-             use_parallel=TRUE )
-
+get_work(
+  date_range_from = "2022-01-20",
+  date_range_to = "2022-01-31",
+  type = "document",
+  fact = "written_questions",
+  use_parallel = TRUE
+)
 }
 }

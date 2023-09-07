@@ -8,4 +8,4 @@ tibble::tribble(
   "verzoekschriften",             "petitions"
 ) -> type_conv
 
-usethis::use_data(DATASET, overwrite = TRUE)
+usethis::use_data(type_conv, overwrite = TRUE)

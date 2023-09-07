@@ -2,7 +2,7 @@
 % Please edit documentation in R/main_script.R
 \name{use_generalized_query}
 \alias{use_generalized_query}
-\title{Get data by using the native query engine}
+\title{Get data by using the native query engine (now only initiated to search written questions, but can be extended)}
 \usage{
 use_generalized_query(
   date_range_from,
@@ -18,5 +18,5 @@ use_generalized_query(
 \item{type}{Vector of types, see get_all_agg_types() for all options}
 }
 \description{
-Get data by using the native query engine
+Get data by using the native query engine (now only initiated to search written questions, but can be extended)
 }

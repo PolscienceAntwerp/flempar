@@ -2,16 +2,15 @@
 % Please edit documentation in R/main_script.R
 \name{get_all_agg_types}
 \alias{get_all_agg_types}
-\title{Get all the types of facts present in the query API}
+\title{Get all the types of facts present in the query API (uses the ubiqutious word 'de' in search API).}
 \usage{
 get_all_agg_types()
 }
 \description{
-Get all the types of facts present in the query API
+Get all the types of facts present in the query API (uses the ubiqutious word 'de' in search API).
 }
 \examples{
-
 \dontrun{
-get_legislatures()
+get_all_agg_types()
 }
 }

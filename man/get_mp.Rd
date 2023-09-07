@@ -26,7 +26,6 @@ Search all the MPs serving, or who served the Flemish parliament
 \examples{
 \dontrun{
 
- get_mp(use_parallel=TRUE,fact="bio",date_at="1998-01-01",selection="date")
-
+get_mp(use_parallel = TRUE, fact = "bio", date_at = "1998-01-01", selection = "date")
 }
 }

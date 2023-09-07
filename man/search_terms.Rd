@@ -17,16 +17,16 @@ search_terms(df, text_field, search_terms = NULL)
 Filter texts fields on certain search terms
 }
 \examples{
-
 \dontrun{
 
-wq_document <- get_work(date_range_from="2022-01-20",
-                           date_range_to="2022-01-31",
-                           type="document",
-                           fact="written_questions",
-                           use_parallel=TRUE )
+wq_document <- get_work(
+  date_range_from = "2022-01-20",
+  date_range_to = "2022-01-31",
+  type = "document",
+  fact = "written_questions",
+  use_parallel = TRUE
+)
 
 search_terms(wq_document, text_field = "text", search_terms = "PFOS")
-
 }
 }

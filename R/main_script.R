@@ -414,12 +414,14 @@ parse_documents <- function(mainlist, use_parallel = TRUE, two_columns_pdf = FAL
                   mainlist[i, ],
                   data.frame(text = text)
                 )
-              } else if (type == "application/rtf") {
+              }
+              else if (type == "application/rtf") {
                 cbind(
                   mainlist[i, ],
                   data.frame(text = "RTF not supported")
                 )
-              } else if (type %in% c("application/vnd.openxmlformats-officedocument.wordprocessingml.document", "binary/octet-stream", "application/octet-stream")) {
+              }
+              else if (type %in% c("application/vnd.openxmlformats-officedocument.wordprocessingml.document", "binary/octet-stream", "application/octet-stream")) {
                 doc <- curl::curl_download(mainlist$document[[i]],
                   destfile = paste0(temp_dir, "/", i, ".docx")
                 )
@@ -437,7 +439,8 @@ parse_documents <- function(mainlist, use_parallel = TRUE, two_columns_pdf = FAL
                   mainlist[i, ],
                   data.frame(text = text)
                 )
-              } else {
+              }
+              else {
                 cbind(
                   mainlist[i, ],
                   data.frame(text = "Failed: filetype not supported")
@@ -445,7 +448,6 @@ parse_documents <- function(mainlist, use_parallel = TRUE, two_columns_pdf = FAL
               }
             },
             error = function(e) {
-              message("this2")
               cbind(
                 mainlist[i, ],
                 data.frame(text = "Error in parallel")
@@ -620,7 +622,7 @@ parse_documents <- function(mainlist, use_parallel = TRUE, two_columns_pdf = FAL
           ) -> list[[i]]
         }
       }
-    }) # endtiming
+    })
   }
 
   unlink(temp_dir, recursive = TRUE)
@@ -1540,16 +1542,22 @@ get_work <- function(date_range_from, date_range_to, fact = "debates", type = "d
     stop(paste0("Supply valid type. Valid options are ", toString(tolower(facts_list)), ". Select one type."))
   }
   if (length(fact) != 1) {
-    stop("You have selected multiple type options. Please set type to ", toString(tolower(facts_list)), ".")
+    stop("You have selected multiple fact options. Please set type to ", toString(tolower(facts_list)), ".")
   }
   if ("plen" %in% plen_comm & "committee_hearings" %in% fact) {
-    stop("You have selected an incompatible combination (Council hearings are not held in plenary sessions).")
+    stop("You have selected an incompatible combination (Council hearings are not held in plenary sessions).  To see all the option type `possibilities` in the console.")
   }
   if ("comm" %in% plen_comm & "debates" %in% fact) {
-    stop("You have selected an incompatible combination (Debates are not held in plenary sessions).")
+    stop("You have selected an incompatible combination (Debates are not held in plenary sessions).  To see all the option type `possibilities` in the console.")
+  }
+  if ("plen" %in% plen_comm & "debates" %in% fact & type == "document" ) {
+    stop("You have selected an incompatible combination (No documents are associated with a debate). To see all the option type `possibilities` in the console.")
   }
   if ("oral_questions_and_interpellations" %in% fact & type == "document") {
-    stop("You have selected an incompatible combination (Documents are not associated with oral questions and interpellations).")
+    stop("You have selected an incompatible combination (Documents are not associated with oral questions and interpellations).  To see all the option type `possibilities` in the console.")
+  }
+  if ("written_questions" %in% fact & type == "speech" ) {
+    stop("You have selected an incompatible combination (No speech is associated with a written question). To see all the option type `possibilities` in the console.")
   }
   # written questions
   if ("document" %in% type & "written_questions" %in% fact) {

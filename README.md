@@ -35,17 +35,17 @@ library(flempar)
 library(dplyr)
 
 # Get all the written questions between "2022-01-20" and "2022-01-31" in a dataframe
- wq_documents <- get_work(date_range_from="2022-01-20"
-                           , date_range_to="2022-01-31"
-                           , type="document"
-                           , fact="written_questions"
+ wq_documents <- get_work(date_range_from="2022-01-20",
+                            date_range_to="2022-01-31",
+                            type="document",
+                            fact="written_questions"
                            )
                            
 # Get all the basic data on these written questions
- wq_basicdata <- get_work(date_range_from="2022-01-20"
-                           , date_range_to="2022-01-31"
-                           , type="details"
-                           , fact="written_questions"
+ wq_basicdata <- get_work(date_range_from="2022-01-20",
+                            date_range_to="2022-01-31",
+                            type="details",
+                            fact="written_questions"
                            )
                            
 # Join the content of the written questions with the basic data
