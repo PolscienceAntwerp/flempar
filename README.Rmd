@@ -26,8 +26,11 @@ parliament.
 You can install the released version of flempar from this repo with:
 
 ``` r
-require(devtools)
-install_github("PolscienceAntwerp/flempar")
+if (!requireNamespace("devtools", quietly = TRUE)) {
+  install.packages("devtools")
+}
+
+devtools::install_github("PolscienceAntwerp/flempar")
 ```
 
 ## Usage
