@@ -1,3 +1,13 @@
+#' Remove trailing and preceding / from a given string
+#' @param input_string input string
+remove_trailing_and_leading_slashes <- function(input_string) {
+  # Remove leading slashes
+  input_string <- sub("^/*", "", input_string)
+  # Remove trailing slashes
+  input_string <- sub("/*$", "", input_string)
+  return(input_string)
+}
+
 #' Call an API once
 #'
 #' @param URL endpoint url
@@ -6,29 +16,24 @@
 #' @param ... whichever to add behind path
 #' @importFrom dplyr %>%
 call_api_once <- function(URL, path = NULL, query, ...) {
+  URL <- remove_trailing_and_leading_slashes(URL)
   if (is.null(path)) {
     response <- httr::GET(file.path(URL, ...), query = query, httr::accept_json())
   } else {
+    path <- remove_trailing_and_leading_slashes(path)
     response <- httr::GET(file.path(URL, path, ...), query = query, httr::accept_json())
-  }
-  if (is.null(path)) {
-    response <-
-      httr::GET(file.path(URL, ...), query = query, httr::accept_json())
-  } else {
-    response <-
-      httr::GET(file.path(URL, path, ...), query = query, httr::accept_json())
   }
   if (any(as.numeric(httr::status_code(response)) %in% 200:204)) {
   } else {
     stop("Error: ", httr::http_status(response)[[1]])
   }
-
+  
   content <- httr::content(response, "text")
-
+  
   if (!identical(httr::headers(response)$`content-type`, "application/json;charset=UTF-8")) {
     stop("File returned is not in JSON format.")
   }
-
+  
   robj <- jsonlite::fromJSON(content)
   return(robj)
 }
@@ -47,21 +52,21 @@ call_api_once <- function(URL, path = NULL, query, ...) {
 #' @importFrom dplyr %>%
 call_api_multiple_times <- function(iterator, URL, path, query, resultVector, use_parallel = TRUE) {
   message("Making ", length(iterator), " calls.")
-
+  
   if (use_parallel == TRUE) {
     if (parallel::detectCores() == 1) {
       stop("You only have one core, dividing the work over cores is not possible. Please set 'use_parallel=FALSE'. ")
     }
-
+    
     cl <- parallel::makeCluster(parallel::detectCores() - 1)
     doParallel::registerDoParallel(cl)
     on.exit(parallel::stopCluster(cl))
-
+    
     time_used <- system.time({
       list <- foreach::foreach(
         i = seq_along(iterator),
         .packages = c("dplyr", "purrr", "httr", "jsonlite"),
-        .export = c("call_api_once"),
+        .export = c("call_api_once", "remove_trailing_and_leading_slashes"),
         .errorhandling = "stop"
       ) %dopar% {
         if (length(URL) == 1) {
@@ -79,7 +84,7 @@ call_api_multiple_times <- function(iterator, URL, path, query, resultVector, us
             iterator[[i]]
           ) -> df
         }
-
+        
         if (!is.null(resultVector)) {
           purrr::pluck(df, !!!resultVector) %>% return()
         } else {
@@ -87,18 +92,18 @@ call_api_multiple_times <- function(iterator, URL, path, query, resultVector, us
         }
       } # endparallel
     }) # endtiming
-
-
+    
+    
     message("Made ", length(iterator), " calls in ", round(time_used[[3]], 1), " seconds.")
-
+    
     names(list) <- iterator
   } # end if
-
+  
   if (use_parallel == FALSE) {
     list <- vector(mode = "list", length = length(iterator))
-
+    
     message("Getting the data. Take into account that dividing the tasks between workers by setting 'use_parallel=TRUE' may be much faster.")
-
+    
     time_used <- system.time({
       for (i in seq_along(iterator)) {
         tryCatch(
@@ -118,7 +123,7 @@ call_api_multiple_times <- function(iterator, URL, path, query, resultVector, us
                 iterator[[i]]
               ) -> df
             }
-
+            
             if (!is.null(resultVector)) {
               purrr::pluck(df, !!!resultVector) %>% return()
             } else {
@@ -132,12 +137,12 @@ call_api_multiple_times <- function(iterator, URL, path, query, resultVector, us
         ) -> list[[i]]
       }
     }) # endtiming
-
+    
     message("Made ", length(iterator), " calls in ", round(time_used[[3]], 1), " seconds.")
-
+    
     names(list) <- iterator
   } # end if
-
+  
   return(list)
 } # endfunction
 
@@ -170,7 +175,7 @@ get_legislatures <- function() {
         path = paste0(""),
         query = list()
       )
-
+      
       tibble::tibble(robj$items) %>%
         tidyr::unnest(cols = c(legislatuur), keep_empty = TRUE) %>%
         dplyr::select(id, start = `start-legislatuur`, eind = `eind-legislatuur`, naam, verkiezingsdatum) %>%
@@ -182,11 +187,11 @@ get_legislatures <- function() {
       message("An error occurred: ", e)
     }
   )
-
+  
   if (is.null(legislatures)) {
     stop("Failed to retrieve legislatures.")
   }
-
+  
   return(legislatures)
 }
 
@@ -206,7 +211,7 @@ get_all_agg_types <- function() {
         path = paste0("de"),
         query = list(page = 1)
       )
-
+      
       tibble::tibble(list = robj$facet_category) %>%
         tidyr::unnest_wider(list) %>%
         tidyr::unnest(facet, keep_empty = TRUE) %>%
@@ -217,11 +222,11 @@ get_all_agg_types <- function() {
       message("An error occurred: ", e)
     }
   )
-
+  
   if (is.null(types)) {
     stop("Failed to retrieve types")
   }
-
+  
   return(types)
 }
 
@@ -236,7 +241,7 @@ use_generalized_query <- function(date_range_from, date_range_to, type = "Schrif
   if (any(is.na(c(lubridate::ymd(date_range_from), lubridate::ymd(date_range_to))))) {
     stop("Wrong Date Format, please use yyyy-mm-dd.")
   }
-
+  
   type <- gsub(" ", "%20", type)
   list <- vector("list", length = length(type))
   for (i in seq_along(1:length(type))) {
@@ -245,14 +250,14 @@ use_generalized_query <- function(date_range_from, date_range_to, type = "Schrif
       path = paste0("inmeta:publicatiedatum:daterange:", date_range_from, "..", date_range_to, "&requiredfields=aggregaattype:", type[[i]]),
       query = list(page = 1, max = 100, sort = "date")
     )
-
+    
     if (as.numeric(robj$count) >= 10000) { # error als je over het aantal items gaat! (max 10000)
       stop("Item count is above 10000: ", robj$count, " the api is limited to 10 000 search results. Please reduce the date range. ")
     }
     if (as.numeric(robj$count) == 0) { # error als je over het aantal items gaat! (max 10000)
       stop("Item count is 0, no questions found. Please try another selection. ")
     }
-
+    
     count_pages <- ceiling(as.numeric(robj$count) / 100)
     list[[i]] <- vector(mode = "list", length = count_pages)
     for (h in seq_along(1:count_pages)) {
@@ -264,7 +269,7 @@ use_generalized_query <- function(date_range_from, date_range_to, type = "Schrif
       list[[i]][[h]] <- robj$result
     }
   }
-
+  
   tibble::tibble(list = list) %>%
     tidyr::unnest(list, keep_empty = TRUE) %>%
     tidyr::unnest(list, keep_empty = TRUE) %>%
@@ -278,11 +283,11 @@ use_generalized_query <- function(date_range_from, date_range_to, type = "Schrif
     dplyr::mutate(url = stringr::str_extract(opendata, "[^0-9]+")) %>%
     dplyr::select(-id, -index, -rank, -snippet) %>%
     dplyr::select(id_fact, dplyr::everything()) -> mainlist
-
+  
   if (is.null(mainlist) || nrow(mainlist) == 0) {
     stop("Failed to retrieve data.")
   }
-
+  
   return(mainlist)
 }
 
@@ -297,7 +302,7 @@ read_text <- function(text) {
   result <- ""
   lstops <- gregexpr(pattern = " ", text)
   stops <- as.integer(names(sort(table(unlist(lstops)), decreasing = TRUE)[1:2]))
-
+  
   for (i in seq(1, QTD_COLUMNS, by = 1)) {
     temp_result <- sapply(text, function(x) {
       start <- 1
@@ -326,17 +331,17 @@ read_text <- function(text) {
 #' @importFrom dplyr %>%
 parse_documents <- function(mainlist, use_parallel = TRUE, two_columns_pdf = FALSE) {
   message("Making ", length(mainlist$document), " calls.")
-
+  
   if (use_parallel == TRUE) {
     if (parallel::detectCores() == 1) {
       stop("You only have one core, dividing the work over cores is not possible. Please set 'use_parallel=FALSE'. ")
     }
-
+    
     cl <- parallel::makeCluster(parallel::detectCores() - 1)
     doParallel::registerDoParallel(cl)
     on.exit(parallel::stopCluster(cl))
     temp_dir <- tempdir()
-
+    
     time_used <- system.time(
       {
         list <- foreach::foreach(
@@ -352,7 +357,7 @@ parse_documents <- function(mainlist, use_parallel = TRUE, two_columns_pdf = FAL
               } else {
                 type <- httr::GET(mainlist$document[[i]])$headers$`content-type`
               }
-
+              
               if (type == "application/msword") {
                 text <- tryCatch(
                   {
@@ -368,7 +373,7 @@ parse_documents <- function(mainlist, use_parallel = TRUE, two_columns_pdf = FAL
                 )
                 if (stringr::str_detect(text, "is not a Word Document.")) {
                   doc <- curl::curl_download(mainlist$document[[i]],
-                    destfile = paste0(temp_dir, "/", i, ".doc")
+                                             destfile = paste0(temp_dir, "/", i, ".doc")
                   )
                   rm(doc)
                 } else {
@@ -423,9 +428,9 @@ parse_documents <- function(mainlist, use_parallel = TRUE, two_columns_pdf = FAL
               }
               else if (type %in% c("application/vnd.openxmlformats-officedocument.wordprocessingml.document", "binary/octet-stream", "application/octet-stream")) {
                 doc <- curl::curl_download(mainlist$document[[i]],
-                  destfile = paste0(temp_dir, "/", i, ".docx")
+                                           destfile = paste0(temp_dir, "/", i, ".docx")
                 )
-
+                
                 officer::read_docx(doc) %>%
                   officer::docx_summary() %>%
                   dplyr::filter(content_type == "paragraph") %>%
@@ -457,19 +462,19 @@ parse_documents <- function(mainlist, use_parallel = TRUE, two_columns_pdf = FAL
         }
       })
   } # endparallel
-
+  
   tibble::tibble(files = list.files(temp_dir)) %>%
     dplyr::mutate(docfiles = stringr::str_detect(files, ".doc")) %>%
     dplyr::filter(docfiles == TRUE) %>%
     dplyr::mutate(index = stringr::str_extract(files, "[0-9]+")) -> files
-
+  
   if (!nrow(files) == 0) {
     list_recov <- vector(mode = "list", length = length(files$files))
     for (i in seq_along(1:length(files$files))) {
       text <- tryCatch(
         {
           name <- doconv::to_pdf(input = paste0(temp_dir, "/", files$files[[i]]), timeout = 12000)
-
+          
           pdftools::pdf_text(name) %>%
             paste(sep = " ") %>%
             stringr::str_replace_all(stringr::fixed("\n"), " ") %>%
@@ -496,11 +501,11 @@ parse_documents <- function(mainlist, use_parallel = TRUE, two_columns_pdf = FAL
     list <- append(list, list_recov)
   }
   list <- Filter(Negate(is.null), list)
-
+  
   if (use_parallel == FALSE) {
     time_used <- system.time({
       temp_dir <- tempdir()
-
+      
       list <- vector(mode = "list", length = length(mainlist$document))
       for (i in seq_along(1:length(mainlist$document))) {
         if ("mimetype" %in% names(mainlist)) {
@@ -508,7 +513,7 @@ parse_documents <- function(mainlist, use_parallel = TRUE, two_columns_pdf = FAL
         } else {
           type <- httr::GET(mainlist$document[[i]])$headers$`content-type`
         }
-
+        
         if (type == "application/msword") {
           text <- tryCatch(
             {
@@ -522,12 +527,12 @@ parse_documents <- function(mainlist, use_parallel = TRUE, two_columns_pdf = FAL
               as.character(e)
             }
           )
-
+          
           if (stringr::str_detect(text, "is not a Word Document.")) {
             list[[i]] <- tryCatch(
               {
                 doc <- curl::curl_download(mainlist$document[[i]],
-                  destfile = paste0(temp_dir, "/", i, ".doc")
+                                           destfile = paste0(temp_dir, "/", i, ".doc")
                 )
                 name <- doconv::to_pdf(input = doc, timeout = 12000)
                 unlink(name)
@@ -601,7 +606,7 @@ parse_documents <- function(mainlist, use_parallel = TRUE, two_columns_pdf = FAL
           ) -> list[[i]]
         } else if (type %in% c("application/vnd.openxmlformats-officedocument.wordprocessingml.document", "binary/octet-stream", "application/octet-stream")) {
           doc <- curl::curl_download(mainlist$document[[i]],
-            destfile = paste0(temp_dir, "/", i, ".docx")
+                                     destfile = paste0(temp_dir, "/", i, ".docx")
           )
           officer::read_docx(doc) %>%
             officer::docx_summary() %>%
@@ -624,10 +629,10 @@ parse_documents <- function(mainlist, use_parallel = TRUE, two_columns_pdf = FAL
       }
     })
   }
-
+  
   unlink(temp_dir, recursive = TRUE)
   message("Made ", length(mainlist$document), " calls in ", round(time_used[[3]], 1), " seconds.")
-
+  
   return(list)
 }
 
@@ -643,13 +648,13 @@ get_written_questions_documents <- function(date_range_from, date_range_to, use_
   message("Getting details on the documents.")
   mainlist <- use_generalized_query(date_range_from = date_range_from, date_range_to = date_range_to)
   message("Getting and parsing the documents.")
-
+  
   list <- parse_documents(mainlist = mainlist, use_parallel = use_parallel, two_columns_pdf = two_columns_pdf)
-
+  
   tibble::tibble(list = list) %>%
     tidyr::unnest(list, keep_empty = TRUE) %>%
     dplyr::mutate(id_fact = gsub("/", "", id_fact)) -> result
-
+  
   return(result)
 } # end function
 
@@ -665,12 +670,12 @@ get_written_questions_details <- function(date_range_from, date_range_to, use_pa
   message("Searching for written questions.")
   list <- use_generalized_query(date_range_from = date_range_from, date_range_to = date_range_to)
   message("Getting the details on the written questions.")
-
+  
   list %>%
     dplyr::mutate(id_fact = stringr::str_extract(id_fact, "[0-9]+")) %>%
     dplyr::select(-document) %>%
     dplyr::distinct() -> list
-
+  
   result <- call_api_multiple_times(
     iterator = list$id_fact,
     URL = list$url,
@@ -679,11 +684,11 @@ get_written_questions_details <- function(date_range_from, date_range_to, use_pa
     resultVector = NULL,
     use_parallel = use_parallel
   )
-
+  
   if (raw == TRUE) {
     return(result)
   }
-
+  
   result %>%
     tibble::tibble(result = ., id_fact = names(result)) %>%
     tidyr::unnest_wider(result, names_sep = "_") %>%
@@ -691,21 +696,21 @@ get_written_questions_details <- function(date_range_from, date_range_to, use_pa
     tidyr::unnest_wider(result_vraagsteller, names_sep = "_") %>%
     tidyr::unnest_wider(result_minister, names_sep = "_") %>%
     dplyr::select(id_fact,
-      title = result_titel,
-      onderwerp = result_onderwerp,
-      dplyr::starts_with("result_thema"),
-      zittingsjaar = result_zittingsjaar,
-      naam_vragensteller = result_vraagsteller_naam,
-      voornaam_vragensteller = result_vraagsteller_voornaam,
-      id_vragensteller = result_vraagsteller_id,
-      bevraagde_minister_naam = result_minister_naam,
-      bevraagde_minister_voornaam = result_minister_voornaam,
-      bevraagde_minister_id = result_minister_id,
-      result_procedureverloop,
-      soort_antwoord = `result_soort-antwoord`,
-      tijdig = result_tijdig
+                  title = result_titel,
+                  onderwerp = result_onderwerp,
+                  dplyr::starts_with("result_thema"),
+                  zittingsjaar = result_zittingsjaar,
+                  naam_vragensteller = result_vraagsteller_naam,
+                  voornaam_vragensteller = result_vraagsteller_voornaam,
+                  id_vragensteller = result_vraagsteller_id,
+                  bevraagde_minister_naam = result_minister_naam,
+                  bevraagde_minister_voornaam = result_minister_voornaam,
+                  bevraagde_minister_id = result_minister_id,
+                  result_procedureverloop,
+                  soort_antwoord = `result_soort-antwoord`,
+                  tijdig = result_tijdig
     ) -> result_details
-
+  
   return(result_details)
 }
 
@@ -734,26 +739,26 @@ get_sessions_details <- function(date_range_from, date_range_to, plen_comm, type
   if (packageVersion("tidyr") < "1.2.0") {
     stop(paste0("You are currently using Tidyr version ", packageVersion("tidyr"), ". The minimal requirement to use this function is version '1.2.0'. Please update tidyr by restarting R and running install.packages('tidyr'). "))
   }
-
+  
   if (any(is.na(c(lubridate::ymd(date_range_from), lubridate::ymd(date_range_to))))) {
     stop("Wrong Date Format, please use yyyy-mm-dd.")
   }
-
+  
   date_range_from_conv <- lubridate::ymd(date_range_from) %>% format("%d%m%Y")
   date_range_to_conv <- lubridate::ymd(date_range_to) %>% format("%d%m%Y")
-
+  
   robj <- call_api_once(
     URL = "http://ws.vlpar.be/e/opendata/",
     path = "/verg/vorige",
     query = list(type = plen_comm, dagen = 999999, limiet = 999999, datumvan = date_range_from_conv, datumtot = date_range_to_conv)
   )
-
+  
   iterator <- robj$items$vergadering$id
-
+  
   if (is.null(iterator)) {
     stop("No sessions found between ", date_range_from, " and ", date_range_to, ".")
   }
-
+  
   message("Found ", length(iterator), " sessions between ", date_range_from, " and ", paste0(date_range_to, "."))
   message("Getting the session details.")
   mainlist <- call_api_multiple_times(
@@ -774,13 +779,13 @@ get_sessions_details <- function(date_range_from, date_range_to, plen_comm, type
       tidyr::unnest_wider(verg_journaallijn, names_sep = "_") %>%
       tidyr::unnest_wider(verg_plenairehandelingen, names_sep = "_") %>%
       dplyr::select(id_verg,
-        woordelijk_verslag = verg_plenairehandelingen_pdffilewebpath,
-        journaallijn_id = verg_journaallijn_id,
-        debatten = verg_journaallijn_debat,
-        gedachtenwisselingen = verg_journaallijn_gedachtewisseling,
-        vragen_interpelaties = verg_journaallijn_vrageninterpellatie,
-        parlementaire_initiatieven = `verg_journaallijn_parlementair-initiatief`,
-        verzoekschrift = verg_journaallijn_verzoekschrift
+                    woordelijk_verslag = verg_plenairehandelingen_pdffilewebpath,
+                    journaallijn_id = verg_journaallijn_id,
+                    debatten = verg_journaallijn_debat,
+                    gedachtenwisselingen = verg_journaallijn_gedachtewisseling,
+                    vragen_interpelaties = verg_journaallijn_vrageninterpellatie,
+                    parlementaire_initiatieven = `verg_journaallijn_parlementair-initiatief`,
+                    verzoekschrift = verg_journaallijn_verzoekschrift
       ) %>%
       tidyr::unnest(cols = c(
         journaallijn_id, debatten, gedachtenwisselingen, vragen_interpelaties,
@@ -798,18 +803,18 @@ get_sessions_details <- function(date_range_from, date_range_to, plen_comm, type
       tidyr::unnest(cols = c(value_id, value_contacttype, value_link, value_objecttype, value_document, value_filewebpath), names_sep = "_", keep_empty = TRUE) %>%
       tidyr::unnest_wider(value_link, names_sep = "_") %>%
       dplyr::select(id_verg,
-        id_fact = value_id,
-        fact_link = value_link_href,
-        type_activiteit,
-        type_specifiek = value_objecttype_naam,
-        woordelijk_verslag,
-        naam = value_document_bestandsnaam,
-        document = value_document_url,
-        journaallijn_id
+                    id_fact = value_id,
+                    fact_link = value_link_href,
+                    type_activiteit,
+                    type_specifiek = value_objecttype_naam,
+                    woordelijk_verslag,
+                    naam = value_document_bestandsnaam,
+                    document = value_document_url,
+                    journaallijn_id
       ) %>%
       dplyr::distinct() %>%
       tidyr::unnest(fact_link, keep_empty = TRUE) -> result_joined
-
+    
     if (extra_via_fact == TRUE & type == "document") {
       message("Getting the extra details by checking the fact endpoints.")
       result_joined %>%
@@ -821,7 +826,7 @@ get_sessions_details <- function(date_range_from, date_range_to, plen_comm, type
         dplyr::mutate(url = stringr::str_extract(fact_link, "[^0-9]+")) %>%
         dplyr::distinct() %>%
         dplyr::filter(!is.na(url)) -> list
-
+      
       result <- call_api_multiple_times(
         iterator = list$id,
         URL = list$url,
@@ -830,7 +835,7 @@ get_sessions_details <- function(date_range_from, date_range_to, plen_comm, type
         resultVector = NULL,
         use_parallel = use_parallel
       )
-
+      
       result %>%
         tibble::tibble(result = ., id_fact = names(result)) %>%
         tidyr::unnest_wider(result, names_sep = "_") %>%
@@ -840,15 +845,15 @@ get_sessions_details <- function(date_range_from, date_range_to, plen_comm, type
         dplyr::rename(document = `result_parlementair-initiatief_document_url`) %>%
         dplyr::filter(!is.na(document)) %>%
         dplyr::left_join(result_joined %>%
-          dplyr::select(id_verg, fact_link) %>%
-          dplyr::mutate(id_fact = stringr::str_extract(fact_link, "[0-9]+")) %>%
-          dplyr::select(id_verg, id_fact) %>%
-          dplyr::distinct(), by = c("id_fact" = "id_fact")) %>%
+                           dplyr::select(id_verg, fact_link) %>%
+                           dplyr::mutate(id_fact = stringr::str_extract(fact_link, "[0-9]+")) %>%
+                           dplyr::select(id_verg, id_fact) %>%
+                           dplyr::distinct(), by = c("id_fact" = "id_fact")) %>%
         dplyr::select(id_verg, id_fact, docs_document = document, docs_naam = `result_parlementair-initiatief_document_bestandsnaam`) %>%
         dplyr::distinct() %>%
         dplyr::mutate(id_fact = as.numeric(id_fact)) %>%
         dplyr::filter(!docs_document %in% result_joined$main_document) -> docs
-
+      
       result_joined %>%
         dplyr::rename(
           result_document = document,
@@ -875,7 +880,7 @@ get_sessions_details <- function(date_range_from, date_range_to, plen_comm, type
     }
     return(result_joined)
   }
-
+  
   if (plen_comm == "comm") {
     mainlist %>%
       tibble::tibble(verg = ., id_verg = names(mainlist)) %>%
@@ -884,12 +889,12 @@ get_sessions_details <- function(date_range_from, date_range_to, plen_comm, type
       tidyr::unnest_wider(`verg_agenda-item_agenda-lijn`) %>%
       guarantee_field("verg_commissiehandelingen") %>%
       dplyr::select(id_verg,
-        debatten = debat,
-        gedachtenwisselingen = gedachtewisseling,
-        vragen_interpelaties = vrageninterpellatie,
-        parlementaire_initiatieven = `parlementair-initiatief`,
-        verzoekschrift = verzoekschrift,
-        verg_commissiehandelingen
+                    debatten = debat,
+                    gedachtenwisselingen = gedachtewisseling,
+                    vragen_interpelaties = vrageninterpellatie,
+                    parlementaire_initiatieven = `parlementair-initiatief`,
+                    verzoekschrift = verzoekschrift,
+                    verg_commissiehandelingen
       ) %>%
       tidyr::unnest(cols = c(
         debatten, gedachtenwisselingen, vragen_interpelaties,
@@ -911,17 +916,17 @@ get_sessions_details <- function(date_range_from, date_range_to, plen_comm, type
       tidyr::unnest_wider(verg_commissiehandelingen, names_sep = "_") %>%
       guarantee_field(c("verg_commissiehandelingen_pdffilewebpath", "value_link_href", "value_objecttype_naam", "value_document_bestandsnaam")) %>%
       dplyr::select(id_verg,
-        id_fact = value_id,
-        fact_link = value_link_href,
-        type_activiteit,
-        type_specifiek = value_objecttype_naam,
-        woordelijk_verslag = verg_commissiehandelingen_pdffilewebpath,
-        hoofd_document = value_filewebpath,
-        hoofd_naam = value_document_bestandsnaam
+                    id_fact = value_id,
+                    fact_link = value_link_href,
+                    type_activiteit,
+                    type_specifiek = value_objecttype_naam,
+                    woordelijk_verslag = verg_commissiehandelingen_pdffilewebpath,
+                    hoofd_document = value_filewebpath,
+                    hoofd_naam = value_document_bestandsnaam
       ) %>%
       dplyr::distinct() %>%
       tidyr::unnest(fact_link, keep_empty = TRUE) -> result
-
+    
     mainlist %>%
       tibble::tibble(verg = ., id_verg = names(mainlist)) %>%
       tidyr::unnest_wider(verg, names_sep = "_") %>%
@@ -933,12 +938,12 @@ get_sessions_details <- function(date_range_from, date_range_to, plen_comm, type
         "verg_journaallijn_verzoekschrift"
       )) %>%
       dplyr::select(id_verg,
-        journaallijn_id = verg_journaallijn_id,
-        debatten = verg_journaallijn_debat,
-        gedachtenwisselingen = verg_journaallijn_gedachtewisseling,
-        vragen_interpelaties = verg_journaallijn_vrageninterpellatie,
-        parlementaire_initiatieven = `verg_journaallijn_parlementair-initiatief`,
-        verzoekschrift = verg_journaallijn_verzoekschrift
+                    journaallijn_id = verg_journaallijn_id,
+                    debatten = verg_journaallijn_debat,
+                    gedachtenwisselingen = verg_journaallijn_gedachtewisseling,
+                    vragen_interpelaties = verg_journaallijn_vrageninterpellatie,
+                    parlementaire_initiatieven = `verg_journaallijn_parlementair-initiatief`,
+                    verzoekschrift = verg_journaallijn_verzoekschrift
       ) %>%
       tidyr::unnest(cols = c(
         journaallijn_id, debatten, gedachtenwisselingen, vragen_interpelaties,
@@ -957,11 +962,11 @@ get_sessions_details <- function(date_range_from, date_range_to, plen_comm, type
       tidyr::unnest(cols = c(value_id, value_link), names_sep = "_", keep_empty = TRUE) %>%
       tidyr::unnest_wider(value_link, names_sep = "_") %>%
       dplyr::select(id_verg,
-        journaallijn_id,
-        id_fact = value_id
+                    journaallijn_id,
+                    id_fact = value_id
       ) %>%
       dplyr::distinct() -> jln
-
+    
     mainlist %>%
       tibble::tibble(verg = ., id_verg = names(mainlist)) %>%
       tidyr::unnest_wider(verg) %>%
@@ -978,12 +983,12 @@ get_sessions_details <- function(date_range_from, date_range_to, plen_comm, type
       tidyr::unnest(cols = c(verslag_document), keep_empty = TRUE) %>%
       guarantee_field(c("initiatief_id", "hoorzitting_gedachtenwisseling_id", "verslag_filewebpath", "bestandsnaam", "verslag_bijlage_url", "verslag_bijlage_bestandsnaam")) %>%
       dplyr::select(id_verg,
-        ini_fact = initiatief_id,
-        hg_fact = hoorzitting_gedachtenwisseling_id,
-        ini_document = verslag_filewebpath,
-        ini_naam = bestandsnaam,
-        hg_document = verslag_bijlage_url,
-        hg_naam = verslag_bijlage_bestandsnaam
+                    ini_fact = initiatief_id,
+                    hg_fact = hoorzitting_gedachtenwisseling_id,
+                    ini_document = verslag_filewebpath,
+                    ini_naam = bestandsnaam,
+                    hg_document = verslag_bijlage_url,
+                    hg_naam = verslag_bijlage_bestandsnaam
       ) %>%
       dplyr::filter(!is.na(ini_fact) | !is.na(hg_fact)) %>%
       tidyr::pivot_longer(
@@ -998,7 +1003,7 @@ get_sessions_details <- function(date_range_from, date_range_to, plen_comm, type
       dplyr::select(id_verg, id_fact, verslag_document = document, verslag_naam = naam) %>%
       na.omit() %>%
       dplyr::distinct() -> verslag
-
+    
     result %>%
       dplyr::left_join(verslag, by = c("id_verg" = "id_verg", "id_fact" = "id_fact")) %>%
       tidyr::pivot_longer(
@@ -1020,11 +1025,11 @@ get_sessions_details <- function(date_range_from, date_range_to, plen_comm, type
         journaallijn_id
       ) %>%
       dplyr::distinct() -> result_joined
-
+    
     if (nrow(result_joined) == 0) {
       message("Query resulted in empty dataframe, usually means nothing was found, try to broaden your search query.")
     }
-
+    
     if (extra_via_fact == TRUE & type == "document") {
       message("Getting the extra details by checking the fact endpoints.")
       result_joined %>%
@@ -1036,7 +1041,7 @@ get_sessions_details <- function(date_range_from, date_range_to, plen_comm, type
         dplyr::mutate(url = stringr::str_extract(fact_link, "[^0-9]+")) %>%
         dplyr::distinct() %>%
         dplyr::filter(!is.na(url)) -> list
-
+      
       result <- call_api_multiple_times(
         iterator = list$id,
         URL = list$url,
@@ -1045,7 +1050,7 @@ get_sessions_details <- function(date_range_from, date_range_to, plen_comm, type
         resultVector = NULL,
         use_parallel = use_parallel
       )
-
+      
       result %>%
         tibble::tibble(result = ., id_fact = names(result)) %>%
         tidyr::unnest_wider(result, names_sep = "_") %>%
@@ -1055,15 +1060,15 @@ get_sessions_details <- function(date_range_from, date_range_to, plen_comm, type
         dplyr::rename(document = `result_parlementair-initiatief_document_url`) %>%
         dplyr::filter(!is.na(document)) %>%
         dplyr::left_join(result_joined %>%
-          dplyr::select(id_verg, fact_link) %>%
-          dplyr::mutate(id_fact = stringr::str_extract(fact_link, "[0-9]+")) %>%
-          dplyr::select(id_verg, id_fact) %>%
-          dplyr::distinct(), by = c("id_fact" = "id_fact")) %>%
+                           dplyr::select(id_verg, fact_link) %>%
+                           dplyr::mutate(id_fact = stringr::str_extract(fact_link, "[0-9]+")) %>%
+                           dplyr::select(id_verg, id_fact) %>%
+                           dplyr::distinct(), by = c("id_fact" = "id_fact")) %>%
         dplyr::select(id_verg, id_fact, docs_document = document, docs_naam = `result_parlementair-initiatief_document_bestandsnaam`) %>%
         dplyr::distinct() %>%
         dplyr::mutate(id_fact = as.numeric(id_fact)) %>%
         dplyr::filter(!docs_document %in% result_joined$document) -> docs
-
+      
       result_joined %>%
         dplyr::rename(
           result_document = document,
@@ -1089,7 +1094,7 @@ get_sessions_details <- function(date_range_from, date_range_to, plen_comm, type
         dplyr::distinct() -> result_joined
     }
   }
-
+  
   return(result_joined)
 }
 
@@ -1116,13 +1121,13 @@ get_plen_comm_speech <- function(date_range_from, date_range_to, fact, plen_comm
     dplyr::left_join(type_conv, by = c("type_activiteit" = "type_nl")) %>%
     dplyr::filter(type_eng %in% fact) %>%
     dplyr::filter(!is.na(journaallijn_id)) -> session_object
-
+  
   if (length(session_object$id_verg) == 0) {
     stop("No facts found. Usually this means the type of fact you are looking for did not occur during this time. Or that this fact does not contain spoken data.")
   }
-
+  
   message("Getting speech.")
-
+  
   result <- call_api_multiple_times(
     iterator = unique(session_object$journaallijn_id),
     URL = "http://ws.vlpar.be/e/opendata/",
@@ -1131,11 +1136,11 @@ get_plen_comm_speech <- function(date_range_from, date_range_to, fact, plen_comm
     resultVector = NULL,
     use_parallel = use_parallel
   )
-
+  
   if (raw == TRUE) {
     return(result)
   }
-
+  
   tibble::tibble(col = result, journaallijn_id = names(result)) %>%
     tidyr::unnest_wider(col) %>%
     tidyr::unnest_wider(vrageninterpellatie, names_sep = "_") %>%
@@ -1150,17 +1155,17 @@ get_plen_comm_speech <- function(date_range_from, date_range_to, fact, plen_comm
     tidyr::unnest_wider(spreker_persoon, names_sep = "_") %>%
     guarantee_field(c("spreker_sprekertekst", "spreker_sprekertitel", "spreker_persoon_id", "debat_id")) %>%
     dplyr::select(vrageninterpellatie_id,
-      `parlementair-initiatief_id`,
-      debat_id,
-      journaallijn_id,
-      text = spreker_sprekertekst,
-      sprekertitel = spreker_sprekertitel,
-      persoon_id = spreker_persoon_id
+                  `parlementair-initiatief_id`,
+                  debat_id,
+                  journaallijn_id,
+                  text = spreker_sprekertekst,
+                  sprekertitel = spreker_sprekertitel,
+                  persoon_id = spreker_persoon_id
     ) %>%
     dplyr::mutate(id_fact = ifelse(!is.na(vrageninterpellatie_id), vrageninterpellatie_id,
-      ifelse(!is.na(`parlementair-initiatief_id`), `parlementair-initiatief_id`,
-        ifelse(!is.na(debat_id), debat_id)
-      )
+                                   ifelse(!is.na(`parlementair-initiatief_id`), `parlementair-initiatief_id`,
+                                          ifelse(!is.na(debat_id), debat_id)
+                                   )
     )) %>%
     dplyr::select(-vrageninterpellatie_id, -`parlementair-initiatief_id`, -debat_id) %>%
     tidyr::unnest(cols = c(text, sprekertitel, persoon_id), keep_empty = TRUE) %>%
@@ -1189,7 +1194,7 @@ get_plen_comm_details <- function(date_range_from, date_range_to, fact, plen_com
     type = type,
     extra_via_fact = extra_via_fact
   )
-
+  
   session_object %>%
     dplyr::left_join(type_conv, by = c("type_activiteit" = "type_nl")) %>%
     dplyr::filter(type_eng %in% fact) %>%
@@ -1198,13 +1203,13 @@ get_plen_comm_details <- function(date_range_from, date_range_to, fact, plen_com
     dplyr::mutate(url = stringr::str_extract(fact_link, "[^0-9]+")) %>%
     dplyr::select(-fact_link) %>%
     dplyr::distinct() -> mainlist
-
+  
   if (length(mainlist$id) == 0) {
     stop("No facts found. Usually this means the type of fact you are looking for did not occur during the specified time.")
   }
-
+  
   message("Getting and parsing the details.")
-
+  
   list <- call_api_multiple_times(
     iterator = mainlist$id,
     URL = mainlist$url,
@@ -1213,11 +1218,11 @@ get_plen_comm_details <- function(date_range_from, date_range_to, fact, plen_com
     resultVector = NULL,
     use_parallel = use_parallel
   )
-
+  
   if (raw == TRUE) {
     return(list)
   }
-
+  
   if (fact == "parliamentary_initiatives") {
     if (plen_comm == "plen") {
       session_object %>%
@@ -1225,48 +1230,48 @@ get_plen_comm_details <- function(date_range_from, date_range_to, fact, plen_com
         dplyr::filter(type_eng %in% fact) %>%
         dplyr::distinct() %>%
         dplyr::left_join(list %>%
-          tibble::tibble(result = ., id_fact = names(list)) %>%
-          tidyr::unnest_wider(result, names_sep = "_") %>%
-          tidyr::unnest_longer(result_journaallijn) %>%
-          tidyr::unnest(result_journaallijn, names_sep = "_") %>%
-          tidyr::unnest(result_journaallijn_vergadering, names_sep = "_") %>%
-          tidyr::unnest_wider(result_thema, names_sep = "_") %>%
-          guarantee_field(c(
-            "result_contacttype",
-            "titel",
-            "onderwerp",
-            "zittingsjaar",
-            "result_journaallijn-stemmingen",
-            "result_numac",
-            "result_nummer",
-            "result_staatsblad",
-            "result_kruispuntbank-url"
-          )) %>%
-          dplyr::select(
-            id_fact = result_id,
-            id_verg = result_journaallijn_vergadering_id,
-            session_start_date = result_journaallijn_vergadering_datumbegin,
-            session_end_date = result_journaallijn_vergadering_datumeinde,
-            contacttype = result_contacttype,
-            titel = result_titel,
-            onderwerp = result_onderwerp,
-            materie = result_materie,
-            zittingsjaar = result_zittingsjaar,
-            vote = `result_journaallijn-stemmingen`,
-            extra_details = `result_parlementair-initiatief`,
-            numac = result_numac,
-            nr = result_nummer,
-            staatsblad = result_staatsblad,
-            kruispuntbank_url = `result_kruispuntbank-url`,
-            status = result_status,
-            dplyr::starts_with("result_thema")
-          ) %>%
-          tidyr::unnest_wider(staatsblad, names_sep = "_") %>%
-          tidyr::unnest_wider(vote, names_sep = "_") %>%
-          guarantee_field(c("vote_stemming")) %>%
-          tidyr::unnest(vote_stemming, names_sep = "_") %>%
-          dplyr::distinct() %>%
-          dplyr::mutate(id_verg = as.character(id_verg)), by = c("id_fact" = "id_fact", "id_verg" = "id_verg")) %>%
+                           tibble::tibble(result = ., id_fact = names(list)) %>%
+                           tidyr::unnest_wider(result, names_sep = "_") %>%
+                           tidyr::unnest_longer(result_journaallijn) %>%
+                           tidyr::unnest(result_journaallijn, names_sep = "_") %>%
+                           tidyr::unnest(result_journaallijn_vergadering, names_sep = "_") %>%
+                           tidyr::unnest_wider(result_thema, names_sep = "_") %>%
+                           guarantee_field(c(
+                             "result_contacttype",
+                             "titel",
+                             "onderwerp",
+                             "zittingsjaar",
+                             "result_journaallijn-stemmingen",
+                             "result_numac",
+                             "result_nummer",
+                             "result_staatsblad",
+                             "result_kruispuntbank-url"
+                           )) %>%
+                           dplyr::select(
+                             id_fact = result_id,
+                             id_verg = result_journaallijn_vergadering_id,
+                             session_start_date = result_journaallijn_vergadering_datumbegin,
+                             session_end_date = result_journaallijn_vergadering_datumeinde,
+                             contacttype = result_contacttype,
+                             titel = result_titel,
+                             onderwerp = result_onderwerp,
+                             materie = result_materie,
+                             zittingsjaar = result_zittingsjaar,
+                             vote = `result_journaallijn-stemmingen`,
+                             extra_details = `result_parlementair-initiatief`,
+                             numac = result_numac,
+                             nr = result_nummer,
+                             staatsblad = result_staatsblad,
+                             kruispuntbank_url = `result_kruispuntbank-url`,
+                             status = result_status,
+                             dplyr::starts_with("result_thema")
+                           ) %>%
+                           tidyr::unnest_wider(staatsblad, names_sep = "_") %>%
+                           tidyr::unnest_wider(vote, names_sep = "_") %>%
+                           guarantee_field(c("vote_stemming")) %>%
+                           tidyr::unnest(vote_stemming, names_sep = "_") %>%
+                           dplyr::distinct() %>%
+                           dplyr::mutate(id_verg = as.character(id_verg)), by = c("id_fact" = "id_fact", "id_verg" = "id_verg")) %>%
         dplyr::distinct() %>%
         dplyr::select(id_verg, id_fact, journaallijn_id, dplyr::everything()) -> result
     }
@@ -1276,78 +1281,78 @@ get_plen_comm_details <- function(date_range_from, date_range_to, fact, plen_com
         dplyr::filter(type_eng %in% fact) %>%
         dplyr::distinct() %>%
         dplyr::left_join(list %>%
-          tibble::tibble(result = ., id_fact = names(list)) %>%
-          tidyr::unnest_wider(result, names_sep = "_") %>%
-          tidyr::unnest_longer(result_commissiegroepering) %>%
-          tidyr::unnest(result_commissiegroepering, names_sep = "_") %>%
-          guarantee_field(c(
-            "result_contacttype",
-            "result_titel",
-            "result_onderwerp",
-            "result_zittingsjaar"
-          )) %>%
-          tidyr::unnest(result_commissiegroepering_vergadering, names_sep = "_") %>%
-          tidyr::unnest_wider(result_thema, names_sep = "_") %>%
-          tidyr::unnest(result_commissiegroepering_vergadering_commissie, names_sep = "_") %>%
-          dplyr::select(id_fact,
-            id_verg = result_commissiegroepering_vergadering_id,
-            id_comm = result_commissiegroepering_vergadering_commissie_id,
-            comm_title = result_commissiegroepering_vergadering_commissie_titel,
-            session_start_date = result_commissiegroepering_vergadering_datumbegin,
-            session_end_date = result_commissiegroepering_vergadering_datumeinde,
-            zittingsjaar = result_zittingsjaar,
-            onderwerp = result_onderwerp,
-            titel = result_titel,
-            status = result_status,
-            materie = result_materie,
-            result_contacttype,
-            extra_details = `result_parlementair-initiatief`,
-            dplyr::starts_with("result_thema")
-          ) %>%
-          dplyr::distinct() %>%
-          dplyr::mutate(
-            id_verg = as.character(id_verg),
-            id_fact = as.integer(id_fact)
-          ), by = c("id_fact" = "id_fact", "id_verg" = "id_verg")) %>%
+                           tibble::tibble(result = ., id_fact = names(list)) %>%
+                           tidyr::unnest_wider(result, names_sep = "_") %>%
+                           tidyr::unnest_longer(result_commissiegroepering) %>%
+                           tidyr::unnest(result_commissiegroepering, names_sep = "_") %>%
+                           guarantee_field(c(
+                             "result_contacttype",
+                             "result_titel",
+                             "result_onderwerp",
+                             "result_zittingsjaar"
+                           )) %>%
+                           tidyr::unnest(result_commissiegroepering_vergadering, names_sep = "_") %>%
+                           tidyr::unnest_wider(result_thema, names_sep = "_") %>%
+                           tidyr::unnest(result_commissiegroepering_vergadering_commissie, names_sep = "_") %>%
+                           dplyr::select(id_fact,
+                                         id_verg = result_commissiegroepering_vergadering_id,
+                                         id_comm = result_commissiegroepering_vergadering_commissie_id,
+                                         comm_title = result_commissiegroepering_vergadering_commissie_titel,
+                                         session_start_date = result_commissiegroepering_vergadering_datumbegin,
+                                         session_end_date = result_commissiegroepering_vergadering_datumeinde,
+                                         zittingsjaar = result_zittingsjaar,
+                                         onderwerp = result_onderwerp,
+                                         titel = result_titel,
+                                         status = result_status,
+                                         materie = result_materie,
+                                         result_contacttype,
+                                         extra_details = `result_parlementair-initiatief`,
+                                         dplyr::starts_with("result_thema")
+                           ) %>%
+                           dplyr::distinct() %>%
+                           dplyr::mutate(
+                             id_verg = as.character(id_verg),
+                             id_fact = as.integer(id_fact)
+                           ), by = c("id_fact" = "id_fact", "id_verg" = "id_verg")) %>%
         dplyr::distinct() %>%
         dplyr::select(id_verg, id_fact, journaallijn_id, dplyr::everything()) -> result
     }
     return(result)
   }
-
+  
   if (fact == "debates") {
     session_object %>%
       dplyr::left_join(type_conv, by = c("type_activiteit" = "type_nl")) %>%
       dplyr::filter(type_eng %in% fact) %>%
       dplyr::distinct() %>%
       dplyr::left_join(list %>%
-        tibble::tibble(result = ., id_fact = names(list)) %>%
-        tidyr::unnest_wider(result, names_sep = "_") %>%
-        tidyr::unnest_wider(result_thema, names_sep = "_") %>%
-        tidyr::unnest_wider(result_journaallijn, names_sep = "_") %>%
-        tidyr::unnest_wider(result_journaallijn_vergadering, names_sep = "_") %>%
-        dplyr::select(id_fact,
-          id_verg = result_journaallijn_vergadering_id,
-          titel = result_titel,
-          onderwerp = result_onderwerp,
-          session_start_date = result_journaallijn_vergadering_datumbegin,
-          session_end_date = result_journaallijn_vergadering_datumeinde,
-          zittingsjaar = result_zittingsjaar,
-          status = result_status,
-          contacttype = result_contacttype,
-          sprekers = result_spreker,
-          dplyr::starts_with("result_thema")
-          # ,result_procedureverloop
-        ) %>%
-        tidyr::unnest(id_verg) %>%
-        dplyr::distinct() %>%
-        dplyr::mutate(
-          id_verg = as.character(id_verg),
-          id_fact = as.integer(id_fact)
-        ), by = c("id_fact" = "id_fact", "id_verg" = "id_verg")) -> result
+                         tibble::tibble(result = ., id_fact = names(list)) %>%
+                         tidyr::unnest_wider(result, names_sep = "_") %>%
+                         tidyr::unnest_wider(result_thema, names_sep = "_") %>%
+                         tidyr::unnest_wider(result_journaallijn, names_sep = "_") %>%
+                         tidyr::unnest_wider(result_journaallijn_vergadering, names_sep = "_") %>%
+                         dplyr::select(id_fact,
+                                       id_verg = result_journaallijn_vergadering_id,
+                                       titel = result_titel,
+                                       onderwerp = result_onderwerp,
+                                       session_start_date = result_journaallijn_vergadering_datumbegin,
+                                       session_end_date = result_journaallijn_vergadering_datumeinde,
+                                       zittingsjaar = result_zittingsjaar,
+                                       status = result_status,
+                                       contacttype = result_contacttype,
+                                       sprekers = result_spreker,
+                                       dplyr::starts_with("result_thema")
+                                       # ,result_procedureverloop
+                         ) %>%
+                         tidyr::unnest(id_verg) %>%
+                         dplyr::distinct() %>%
+                         dplyr::mutate(
+                           id_verg = as.character(id_verg),
+                           id_fact = as.integer(id_fact)
+                         ), by = c("id_fact" = "id_fact", "id_verg" = "id_verg")) -> result
     return(result)
   }
-
+  
   if (fact == "oral_questions_and_interpellations") {
     list %>%
       tibble::tibble(result = ., id_fact = names(list)) %>%
@@ -1386,7 +1391,7 @@ get_plen_comm_details <- function(date_range_from, date_range_to, fact, plen_com
       dplyr::mutate(journaallijn_id = as.character(journaallijn_id)) -> result
     return(result)
   }
-
+  
   if (fact == "committee_hearings") {
     session_object %>%
       dplyr::left_join(type_conv, by = c("type_activiteit" = "type_nl")) %>%
@@ -1395,42 +1400,42 @@ get_plen_comm_details <- function(date_range_from, date_range_to, fact, plen_com
       dplyr::rename(naam_document = naam) %>%
       dplyr::filter(!is.na(document)) %>%
       dplyr::left_join(list %>%
-        tibble::tibble(result = ., id_fact = names(list)) %>%
-        tidyr::unnest_wider(result, names_sep = "_") %>%
-        tidyr::unnest_wider(result_thema, names_sep = "_") %>%
-        tidyr::unnest_wider(result_procedureverloop, names_sep = "_") %>%
-        tidyr::unnest(cols = c(result_procedureverloop_vergadering), keep_empty = TRUE) %>%
-        dplyr::select(id_fact,
-          id_verg = id,
-          session_start_date = datumbegin,
-          session_end_date = datumeinde,
-          omschrijving,
-          titel = result_titel,
-          onderwerp = result_onderwerp,
-          dplyr::starts_with("result_thema"),
-          zittingsjaar = result_zittingsjaar,
-          status = result_status
-          # ,result_objecttype
-          , result_contacttype,
-          `result_parlementair-initiatief`,
-          base_initiatives = `result_basis-initiatieven`
-        ) %>%
-        dplyr::filter(!is.na(id_verg)) %>%
-        tidyr::hoist(result_contacttype,
-          naam = list("contact", 1, "naam"),
-          voornaam = list("contact", 1, "voornaam"),
-          role = list("beschrijving"),
-          id_mp = list("contact", 1, "id")
-        ) %>%
-        dplyr::distinct() %>%
-        dplyr::mutate(
-          id_verg = as.character(id_verg),
-          id_fact = as.integer(id_fact)
-        ), by = c("id_fact" = "id_fact", "id_verg" = "id_verg")) %>%
+                         tibble::tibble(result = ., id_fact = names(list)) %>%
+                         tidyr::unnest_wider(result, names_sep = "_") %>%
+                         tidyr::unnest_wider(result_thema, names_sep = "_") %>%
+                         tidyr::unnest_wider(result_procedureverloop, names_sep = "_") %>%
+                         tidyr::unnest(cols = c(result_procedureverloop_vergadering), keep_empty = TRUE) %>%
+                         dplyr::select(id_fact,
+                                       id_verg = id,
+                                       session_start_date = datumbegin,
+                                       session_end_date = datumeinde,
+                                       omschrijving,
+                                       titel = result_titel,
+                                       onderwerp = result_onderwerp,
+                                       dplyr::starts_with("result_thema"),
+                                       zittingsjaar = result_zittingsjaar,
+                                       status = result_status
+                                       # ,result_objecttype
+                                       , result_contacttype,
+                                       `result_parlementair-initiatief`,
+                                       base_initiatives = `result_basis-initiatieven`
+                         ) %>%
+                         dplyr::filter(!is.na(id_verg)) %>%
+                         tidyr::hoist(result_contacttype,
+                                      naam = list("contact", 1, "naam"),
+                                      voornaam = list("contact", 1, "voornaam"),
+                                      role = list("beschrijving"),
+                                      id_mp = list("contact", 1, "id")
+                         ) %>%
+                         dplyr::distinct() %>%
+                         dplyr::mutate(
+                           id_verg = as.character(id_verg),
+                           id_fact = as.integer(id_fact)
+                         ), by = c("id_fact" = "id_fact", "id_verg" = "id_verg")) %>%
       dplyr::mutate(omschrijving = gsub("<(.|\n)*?>", "", omschrijving)) -> result
     return(result)
   }
-
+  
   # if(fact=="verzoekschriften"){
   #
   #   result %>%
@@ -1488,16 +1493,16 @@ get_plen_comm_documents <- function(date_range_from, date_range_to, fact, plen_c
     dplyr::mutate(id = stringr::str_extract(document, "[0-9]+")) %>%
     dplyr::select(id_verg, id_fact, id, document) %>%
     dplyr::distinct() -> mainlist
-
+  
   if (length(mainlist$document) == 0) {
     stop("No facts found. Usually this means the type of fact you are looking for did not occur during the specified time or that the specified output is not present.")
   }
-
+  
   message("Getting and parsing the documents.")
   list <- parse_documents(mainlist = mainlist, use_parallel = use_parallel)
   tibble::tibble(list = list) %>%
     tidyr::unnest(list, keep_empty = TRUE) -> result
-
+  
   return(result)
 }
 
@@ -1529,7 +1534,7 @@ get_plen_comm_documents <- function(date_range_from, date_range_to, fact, plen_c
 get_work <- function(date_range_from, date_range_to, fact = "debates", type = "details", plen_comm = "plen", use_parallel = TRUE, raw = FALSE, extra_via_fact = FALSE, two_columns_pdf = FALSE) {
   type_list <- c("document", "speech", "details")
   facts_list <- c("written_questions", "debates", "oral_questions_and_interpellations", "parliamentary_initiatives", "committee_hearings")
-
+  
   # types
   if (!any(type_list %in% type)) {
     stop(paste0("Supply valid type. Valid options are ", toString(tolower(type_list)), ". Select one type."))
@@ -1570,10 +1575,10 @@ get_work <- function(date_range_from, date_range_to, fact = "debates", type = "d
     object %>%
       dplyr::select(id_fact, publicatiedatum, text) %>%
       as.data.frame() -> result
-
+    
     return(result)
   }
-
+  
   # written questions
   if ("details" %in% type & "written_questions" %in% fact) {
     object <- get_written_questions_details(
@@ -1584,7 +1589,7 @@ get_work <- function(date_range_from, date_range_to, fact = "debates", type = "d
     )
     return(object)
   }
-
+  
   # get speech from "debates","oral_questions_and_interpellations","parliamentary_initiatives","committee_hearings"
   if ("speech" %in% type & any(facts_list %in% fact)) {
     object <- get_plen_comm_speech(
@@ -1598,7 +1603,7 @@ get_work <- function(date_range_from, date_range_to, fact = "debates", type = "d
     )
     return(object)
   }
-
+  
   # get details from "debates","oral_questions_and_interpellations","parliamentary_initiatives","committee_hearings"
   if ("details" %in% type & any(facts_list %in% fact)) {
     object <- get_plen_comm_details(
@@ -1613,7 +1618,7 @@ get_work <- function(date_range_from, date_range_to, fact = "debates", type = "d
     )
     return(object)
   }
-
+  
   # get documents from "debates","oral_questions_and_interpellations","parliamentary_initiatives","committee_hearings"
   if ("document" %in% type & any(facts_list %in% fact)) {
     object <- get_plen_comm_documents(
@@ -1653,20 +1658,20 @@ get_work <- function(date_range_from, date_range_to, fact = "debates", type = "d
 #' }
 search_terms <- function(df, text_field, search_terms = NULL) {
   message("Scrubbing away all html-tags ")
-
+  
   df %>%
     tibble::as_tibble() %>%
     dplyr::rename(text_col = !!text_field) %>%
     dplyr::mutate(text_col = gsub("\r", "", text_col)) %>%
     dplyr::mutate(text_col = gsub("\n", "", text_col)) -> raw_text
-
+  
   for (i in seq_along(raw_text$text_col)) {
     raw_text$text_col[[i]] <- xml2::xml_text(xml2::read_html(charToRaw(raw_text$text_col[[i]])))
   }
-
+  
   raw_text %>%
     dplyr::filter(stringr::str_detect(tolower(text_col), gsub(", ", "|", toString(tolower(search_terms))))) -> result
-
+  
   return(result)
 }
 
@@ -1686,25 +1691,25 @@ search_terms <- function(df, text_field, search_terms = NULL) {
 #' }
 get_mp <- function(selection = "current", fact = "bio", date_at = NULL, use_parallel = TRUE) {
   facts <- c("raw", "bio", "education", "career", "political_info", "presences_commissions", "presences_plenary")
-
+  
   if (length(selection) != 1) {
     stop("You have selected multiple selection options. Please set selection to either 'current', 'all' or 'date'.")
   }
-
+  
   if (length(fact) != 1) {
     stop("You have selected multiple type options. Please set type to ", toString(tolower(facts)), ".")
   }
-
+  
   if (any(!fact %in% facts)) {
     stop("Not a valid type. Valid options are ", toString(tolower(facts)), ". Select one type.")
   }
-
+  
   if (selection == "current") {
     if (!is.null(date_at)) {
       message("Selection is set to current, date_at will be ignored.")
       date_at <- NULL
     }
-
+    
     date_at_conv <- Sys.Date() %>% format("%d%m%Y")
     robj <- call_api_once(
       URL = "http://ws.vlpar.be/e/opendata/",
@@ -1720,17 +1725,17 @@ get_mp <- function(selection = "current", fact = "bio", date_at = NULL, use_para
       use_parallel = use_parallel
     )
   }
-
+  
   # DATE
   if (selection == "date") {
     if (is.null(date_at)) {
       stop("You have selected date as selection criteria, but failed to provide a date. Please set date_at (yyyy-mm-dd).")
     }
-
+    
     if (is.na(lubridate::ymd(date_at))) {
       stop("Wrong Date Format, please use yyyy-mm-dd.")
     }
-
+    
     date_at_conv <- lubridate::ymd(date_at) %>% format("%d%m%Y")
     robj <- call_api_once(
       URL = "http://ws.vlpar.be/e/opendata/",
@@ -1746,7 +1751,7 @@ get_mp <- function(selection = "current", fact = "bio", date_at = NULL, use_para
       use_parallel = use_parallel
     )
   }
-
+  
   # FORMER
   if (selection == "former") {
     if (!is.null(date_at)) {
@@ -1767,7 +1772,7 @@ get_mp <- function(selection = "current", fact = "bio", date_at = NULL, use_para
       use_parallel = use_parallel
     )
   }
-
+  
   fact <- tolower(fact)
   if (fact == "raw") {
     mainlist %>%
@@ -1775,22 +1780,22 @@ get_mp <- function(selection = "current", fact = "bio", date_at = NULL, use_para
       tidyr::unnest_wider(vv) -> result
     return(result)
   }
-
+  
   if (fact == "bio") {
     mainlist %>%
       tibble::tibble(vv = .) %>%
       tidyr::unnest_wider(vv) %>%
-      guarantee_field(c("domicillieadres")) %>%
-      dplyr::select(id_mp = id, voornaam, achternaam = naam, geslacht, geboortedatum, geboorteplaats, domicillieadres, gsmnr, email, website, huidigefractie) %>%
+      guarantee_field(c("domicillieadres","email","naam","geslacht","geboortedatum","geboorteplaats", "gsmnr", "website", "huidigefractie")) %>%
+      dplyr::select(id_mp = id, voornaam, achternaam = naam, geslacht, geboortedatum, geboorteplaats, gsmnr, email, website, huidigefractie) %>%
       tidyr::unnest_wider(huidigefractie) %>%
-      dplyr::select(id_mp, voornaam, achternaam, geslacht, geboortedatum, geboorteplaats, domicillieadres, gsmnr, email, website, party_id = id, party_naam = naam) %>%
+      dplyr::select(id_mp, voornaam, achternaam, geslacht, geboortedatum, geboorteplaats, gsmnr, email, website, party_id = id, party_naam = naam) %>%
       dplyr::mutate(geboortedatum = lubridate::date(lubridate::ymd_hms(geboortedatum))) %>%
       guarantee_field(c("domicillieadres")) %>%
       tidyr::unnest_wider(domicillieadres, names_sep = "_") %>%
       guarantee_field(c("domicillieadres_deelgemeente", "domicillieadres_nr", "domicillieadres_straat", "domicillieadres_telnr")) %>%
       tidyr::unnest_wider(domicillieadres_deelgemeente, names_sep = "_") %>%
       guarantee_field(c("domicillieadres_deelgemeente_naam", "domicillieadres_deelgemeente_postnr")) %>%
-      dplyr::select(id_mp, voornaam, achternaam, geslacht, geboortedatum, geboorteplaats, domicillieadres_deelgemeente = domicillieadres_deelgemeente_naam, domicillieadres_postcode = domicillieadres_deelgemeente_postnr, domicillieadres_nr, domicillieadres_straat, domicillieadres_telnr, gsmnr, email, website, party_id, party_naam) %>%
+      dplyr::select(id_mp, voornaam, achternaam, geslacht, geboortedatum, geboorteplaats, gsmnr, email, website, party_id, party_naam ) %>%
       tidyr::unnest_wider(email, names_sep = "_") %>%
       tidyr::unnest(website, names_sep = "_", keep_empty = TRUE) %>%
       guarantee_field(c("website_soort", "website_value")) %>%
@@ -1798,7 +1803,7 @@ get_mp <- function(selection = "current", fact = "bio", date_at = NULL, use_para
       dplyr::select(-`NA`) -> result
     return(result)
   }
-
+  
   if (fact == "education") {
     mainlist %>%
       tibble::tibble(vv = .) %>%
@@ -1808,7 +1813,7 @@ get_mp <- function(selection = "current", fact = "bio", date_at = NULL, use_para
       tidyr::unnest(opleiding, keep_empty = TRUE) -> result
     return(result)
   }
-
+  
   if (fact == "career") {
     mainlist %>%
       tibble::tibble(vv = .) %>%
@@ -1821,7 +1826,7 @@ get_mp <- function(selection = "current", fact = "bio", date_at = NULL, use_para
       dplyr::select(id_mp, voornaam, naam, datumvan, datumtot, titel, werkgever) -> result
     return(result)
   }
-
+  
   if (fact == "presences_commissions") {
     mainlist %>%
       tibble::tibble(vv = .) %>%
@@ -1833,7 +1838,7 @@ get_mp <- function(selection = "current", fact = "bio", date_at = NULL, use_para
       tidyr::unnest(c(commissie, `vast-lid-aanwezigheid`, `plaatsvervangend-lid-aanwezigheid`), names_sep = "_", keep_empty = TRUE) -> result
     return(result)
   }
-
+  
   if (fact == "presences_plenary") {
     mainlist %>%
       tibble::tibble(vv = .) %>%
@@ -1844,7 +1849,7 @@ get_mp <- function(selection = "current", fact = "bio", date_at = NULL, use_para
       tidyr::unnest_wider(aanwezigheden) -> result
     return(result)
   }
-
+  
   if (fact == "political_info") {
     mainlist %>%
       tibble::tibble(vv = .) %>%
