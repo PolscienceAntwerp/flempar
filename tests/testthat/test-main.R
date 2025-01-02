@@ -54,7 +54,7 @@ test_that("PLEN_DB_DETAILS", {
     date_range_to = "2023-05-18",
     type = "details",
     fact = "debates"
-  )), c(2, 24))
+  )), c(2, 25))
 })
 
 test_that("PLEN_OQ_SPEECH", {
@@ -72,7 +72,7 @@ test_that("PLEN_OQ_DETAILS", {
     date_range_to = "2022-01-15",
     type = "details",
     fact = "oral_questions_and_interpellations"
-  )), c(16, 18))
+  )), c(16, 19))
 })
 
 test_that("COMM_PI_DOCUMENT", {
@@ -82,7 +82,7 @@ test_that("COMM_PI_DOCUMENT", {
     type = "document",
     fact = "parliamentary_initiatives",
     plen_comm = "comm"
-  )), c(69, 5))
+  )), c(57, 5))
 })
 
 test_that("COMM_PI_DETAILS", {
@@ -92,7 +92,7 @@ test_that("COMM_PI_DETAILS", {
     type = "details",
     fact = "parliamentary_initiatives",
     plen_comm = "comm"
-  )), c(16, 39))
+  )), c(16, 40))
 })
 
 
@@ -113,27 +113,27 @@ test_that("COMM_OQ_DETAILS", {
     type = "details",
     fact = "oral_questions_and_interpellations",
     plen_comm = "comm"
-  )), c(10, 17))
+  )), c(10, 18))
 })
 
 test_that("COMM_CH_DOCUMENT", {
   expect_equal(dim(get_work(
-    date_range_from = "2022-03-28",
-    date_range_to = "2022-03-29",
+    date_range_from = "2022-03-29",
+    date_range_to = "2022-03-30",
     type = "document",
     fact = "committee_hearings",
     plen_comm = "comm"
-  )), c(1, 5))
+  )), c(12, 5))
 })
 
 test_that("COMM_CH_DETAILS", {
   expect_equal(dim(get_work(
-    date_range_from = "2022-03-28",
-    date_range_to = "2022-03-29",
+    date_range_from = "2022-03-29",
+    date_range_to = "2022-03-30",
     type = "details",
     fact = "committee_hearings",
     plen_comm = "comm"
-  )), c(1, 25))
+  )), c(12, 25))
 })
 
 test_that("WQ_DETAILS", {

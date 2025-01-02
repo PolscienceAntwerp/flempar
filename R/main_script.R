@@ -247,7 +247,7 @@ use_generalized_query <- function(date_range_from, date_range_to, type = "Schrif
   for (i in seq_along(1:length(type))) {
     robj <- call_api_once(
       URL = "https://ws.vlpar.be/api/search/query",
-      path = paste0("inmeta:publicatiedatum:daterange:", date_range_from, "..", date_range_to, "&requiredfields=aggregaattype:", type[[i]]),
+      path = paste0("inmeta:publicatiedatum:daterange:", date_range_from, "..", date_range_to, "?collection=vp_collection&requiredfields=aggregaattype:", type[[i]]),
       query = list(page = 1, max = 100, sort = "date")
     )
     
@@ -263,26 +263,31 @@ use_generalized_query <- function(date_range_from, date_range_to, type = "Schrif
     for (h in seq_along(1:count_pages)) {
       robj <- call_api_once(
         URL = "https://ws.vlpar.be/api/search/query",
-        path = paste0("inmeta:publicatiedatum:daterange:", date_range_from, "..", date_range_to, "&requiredfields=aggregaattype:", type[[i]]),
+        path = paste0("inmeta:publicatiedatum:daterange:", date_range_from, "..", date_range_to, "?collection=vp_collection&requiredfields=aggregaattype:", type[[i]]),
         query = list(page = h, max = 100, sort = "date")
       )
       list[[i]][[h]] <- robj$result
     }
   }
   
+  # filter(aggregaattype == "Schriftelijke vraag") ensures that only written questions are kept even if Elastic Search returns something different
   tibble::tibble(list = list) %>%
     tidyr::unnest(list, keep_empty = TRUE) %>%
     tidyr::unnest(list, keep_empty = TRUE) %>%
     tidyr::unnest(metatags, keep_empty = TRUE) %>%
     tidyr::unnest(metatag, keep_empty = TRUE) %>%
-    dplyr::distinct() %>%
+    dplyr::distinct() %>% 
+    dplyr::select(-mimetype) %>% 
     dplyr::filter(name %in% c("publicatiedatum", "opendata", "document", "aggregaattype", "mimetype", "minister", "vraagsteller")) %>%
-    tidyr::pivot_wider(names_from = name, values_from = value) %>%
+    tidyr::pivot_wider(names_from = name, values_from = value) %>% 
+    tidyr::unnest(publicatiedatum, keep_empty = TRUE) %>%
     dplyr::mutate(publicatiedatum = lubridate::date(publicatiedatum)) %>%
-    dplyr::mutate(id_fact = stringr::str_extract(opendata, "[0-9]+")) %>%
+    dplyr::mutate(id_fact = stringr::str_extract(opendata, "[0-9]+")) %>%  
     dplyr::mutate(url = stringr::str_extract(opendata, "[^0-9]+")) %>%
     dplyr::select(-id, -index, -rank, -snippet) %>%
-    dplyr::select(id_fact, dplyr::everything()) -> mainlist
+    dplyr::select(id_fact, dplyr::everything()) %>%
+    tidyr::unnest(aggregaattype, keep_empty = TRUE) %>% 
+    filter(aggregaattype == "Schriftelijke vraag") -> mainlist
   
   if (is.null(mainlist) || nrow(mainlist) == 0) {
     stop("Failed to retrieve data.")
