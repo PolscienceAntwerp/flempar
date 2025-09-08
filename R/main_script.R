@@ -683,7 +683,8 @@ get_written_questions_details <- function(date_range_from, date_range_to, use_pa
   
   result <- call_api_multiple_times(
     iterator = list$id_fact,
-    URL = list$url,
+    #URL = list$url, # as of Sep 4 2025, this returns http://ws.vlpar.be/e/opendata/schv/, which is not valid anymore
+    URL = "https://ws.vlpar.be/e/opendata/schv/",
     path = NULL,
     query = list(),
     resultVector = NULL,
@@ -753,7 +754,7 @@ get_sessions_details <- function(date_range_from, date_range_to, plen_comm, type
   date_range_to_conv <- lubridate::ymd(date_range_to) %>% format("%d%m%Y")
   
   robj <- call_api_once(
-    URL = "http://ws.vlpar.be/e/opendata/",
+    URL = "https://ws.vlpar.be:443/e/opendata/",
     path = "/verg/vorige",
     query = list(type = plen_comm, dagen = 999999, limiet = 999999, datumvan = date_range_from_conv, datumtot = date_range_to_conv)
   )
@@ -768,7 +769,7 @@ get_sessions_details <- function(date_range_from, date_range_to, plen_comm, type
   message("Getting the session details.")
   mainlist <- call_api_multiple_times(
     iterator = iterator,
-    URL = "http://ws.vlpar.be/e/opendata/",
+    URL = "https://ws.vlpar.be:443/e/opendata/",
     path = "verg",
     query = list(aanpassingen = "nee", idPrsHighlight = 0),
     resultVector = c("vergadering"),
@@ -1135,7 +1136,7 @@ get_plen_comm_speech <- function(date_range_from, date_range_to, fact, plen_comm
   
   result <- call_api_multiple_times(
     iterator = unique(session_object$journaallijn_id),
-    URL = "http://ws.vlpar.be/e/opendata/",
+    URL = "https://ws.vlpar.be:443/e/opendata/",
     path = "jln",
     query = list(),
     resultVector = NULL,
@@ -1717,13 +1718,13 @@ get_mp <- function(selection = "current", fact = "bio", date_at = NULL, use_para
     
     date_at_conv <- Sys.Date() %>% format("%d%m%Y")
     robj <- call_api_once(
-      URL = "http://ws.vlpar.be/e/opendata/",
+      URL = "https://ws.vlpar.be:443/e/opendata/",
       path = "/vv/op-datum",
       query = list(datum = date_at_conv)
     )
     mainlist <- call_api_multiple_times(
       iterator = robj$items$volksvertegenwoordiger$id,
-      URL = "http://ws.vlpar.be/e/opendata/",
+      URL = "https://ws.vlpar.be:443/e/opendata/",
       path = "/vv",
       query = list(lang = "nl"),
       resultVector = NULL,
@@ -1743,13 +1744,13 @@ get_mp <- function(selection = "current", fact = "bio", date_at = NULL, use_para
     
     date_at_conv <- lubridate::ymd(date_at) %>% format("%d%m%Y")
     robj <- call_api_once(
-      URL = "http://ws.vlpar.be/e/opendata/",
+      URL = "https://ws.vlpar.be:443/e/opendata/",
       path = "/vv/op-datum",
       query = list(datum = date_at_conv)
     )
     mainlist <- call_api_multiple_times(
       iterator = robj$items$volksvertegenwoordiger$id,
-      URL = "http://ws.vlpar.be/e/opendata/",
+      URL = "https://ws.vlpar.be:443/e/opendata/",
       path = "/vv",
       query = list(lang = "nl"),
       resultVector = NULL,
@@ -1764,13 +1765,13 @@ get_mp <- function(selection = "current", fact = "bio", date_at = NULL, use_para
       date_at <- NULL
     }
     robj <- call_api_once(
-      URL = "http://ws.vlpar.be/e/opendata/",
+      URL = "https://ws.vlpar.be:443/e/opendata/",
       path = "/vv/gewezen",
       query = list()
     )
     mainlist <- call_api_multiple_times(
       iterator = robj$items$volksvertegenwoordiger$id,
-      URL = "http://ws.vlpar.be/e/opendata/",
+      URL = "https://ws.vlpar.be:443/e/opendata/",
       path = "/vv",
       query = list(lang = "nl"),
       resultVector = NULL,
